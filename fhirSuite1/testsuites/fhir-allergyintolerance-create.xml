@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testcase id="testCaseAllergyIntoleranceValidation" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+    <metadata>
+        <gitb:name>Patient Allergy Intolerance Payload Validation</gitb:name>
+        <gitb:version>1.0</gitb:version>
+        <gitb:description>Test case to validate a patient allergy intolerance payload by forwarding it to a HAPI server and checking the server response.</gitb:description>
+    </metadata>
+    <actors>
+        <gitb:actor id="ClientSystem" name="Client System" role="SUT"/>
+        <gitb:actor id="HAPIServer" name="HAPI Server"/>
+    </actors>
+    <steps>
+        <assign to="httpHeaders{Content-Type}">"application/json"</assign>
+        <receive id="receivePatientData" desc="Receive patient allergy Intolerance payload" handler="HttpMessagingV2">
+            <input name="uriExtension">"/receiveAllergyIntolerance"</input>
+            <input name="method">"POST"</input>
+            <input name="status">200</input>
+            <input name="body">"ACK-1234567890"</input>
+            <input name="headers">$httpHeaders</input>
+        </receive>
+        <send id="forwardToHAPI" desc="Forward to HAPI server" handler="HttpMessagingV2">
+            <input name="uri">"http://hapi.fhir.org/baseR4/AllergyIntolerance"</input>
+            <input name="method">"POST"</input>
+            <input name="body">$receivePatientData{request}{body}</input>
+            <input name="headers">$httpHeaders</input>
+        </send>
+        <!-- Validate the server response status code -->
+        <verify handler="StringValidator" desc="Validate server response status">
+            <input name="actual">$forwardToHAPI{response}{status}</input>
+            <input name="expected">"201"</input>
+            <input name="failureMessage">"The server response status was not 200."</input>
+        </verify>
+        <!-- Additional checks can be added here for headers or body content -->
+    </steps>
+    <output>
+        <success>
+            <default>"Patient allergy intolerance payload validation succeeded based on server response."</default>
+        </success>
+        <failure>
+            <default>"Patient allergy intolerance payload validation failed. Check the server response for details."</default>
+        </failure>
+    </output>
+</testcase>
