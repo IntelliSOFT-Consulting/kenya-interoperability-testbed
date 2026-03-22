@@ -17,7 +17,7 @@
         <assign to="httpHeaders{Content-Type}">"application/fhir+json"</assign>
 
         <receive id="receiveBundleData" desc="Receive FHIR Bundle payload" handler="HttpMessagingV2">
-            <input name="uriExtension">"/receiveBundle"</input>
+            <input name="uriExtension">"/Bundle"</input>
             <input name="method">"POST"</input>
             <input name="status">200</input>
             <input name="headers">$httpHeaders</input>

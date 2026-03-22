@@ -15,7 +15,7 @@
         <assign to="httpHeaders{Content-Type}">"application/json"</assign>
 
         <receive id="receivePatientData" desc="Receive patient allergy Intolerance payload" handler="HttpMessagingV2">
-            <input name="uriExtension">"/receiveAllergyIntolerance"</input>
+            <input name="uriExtension">"/AllergyIntolerance"</input>
             <input name="method">"POST"</input>
             <input name="status">200</input>
             <input name="headers">$httpHeaders</input>

@@ -15,7 +15,7 @@
 
         <!-- Receive Medication payload -->
         <receive id="receivePatientData" desc="Receive patient medication payload" handler="HttpMessagingV2">
-            <input name="uriExtension">"/receiveMedication"</input>
+            <input name="uriExtension">"/Medication"</input>
             <input name="method">"POST"</input>
             <input name="status">200</input>
             <input name="body">"ACK-1234567890"</input>

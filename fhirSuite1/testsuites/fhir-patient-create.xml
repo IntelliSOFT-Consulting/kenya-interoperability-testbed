@@ -19,7 +19,7 @@
         <assign to="httpHeaders{Content-Type}">"application/json"</assign>
 
         <receive id="receivePatientData" desc="Receive patient payload" handler="HttpMessagingV2">
-            <input name="uriExtension">"/receivePatient"</input>
+            <input name="uriExtension">"/Patient"</input>
             <input name="method">"POST"</input>
             <input name="status">200</input>
             <input name="headers">$httpHeaders</input>
