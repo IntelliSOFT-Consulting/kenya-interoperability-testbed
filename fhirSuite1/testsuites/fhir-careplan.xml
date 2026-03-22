@@ -13,7 +13,7 @@
         <assign to="httpHeaders{Content-Type}">"application/json"</assign>
 
         <receive id="receivePatientData" desc="Receive patient CarePlan payload" handler="HttpMessagingV2">
-            <input name="uriExtension">"/receiveCarePlan"</input>
+            <input name="uriExtension">"/CarePlan"</input>
             <input name="method">"POST"</input>
             <input name="status">200</input>
             <input name="headers">$httpHeaders</input>
