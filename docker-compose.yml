@@ -1,45 +1,74 @@
 volumes:
    gitb-repo:
    gitb-dbdata:
+   hapi-data:
 
 services:
+
+   # ---------------------------
+   # GITB SERVICES
+   # ---------------------------
+
    gitb-redis:
       image: isaitb/gitb-redis
       container_name: itb-redis
       restart: unless-stopped
+
    gitb-mysql:
       image: isaitb/gitb-mysql
       container_name: itb-mysql
       restart: unless-stopped
       volumes:
-       - gitb-dbdata:/var/lib/mysql
+        - gitb-dbdata:/var/lib/mysql
       healthcheck:
-       test: "/usr/bin/mysql --user=root --password=$$MYSQL_ROOT_PASSWORD --execute \"SHOW DATABASES;\""
-       interval: 3s
-       retries: 50
+        test: "/usr/bin/mysql --user=root --password=$$MYSQL_ROOT_PASSWORD --execute \"SHOW DATABASES;\""
+        interval: 3s
+        retries: 50
+
    gitb-srv:
       image: isaitb/gitb-srv
       container_name: itb-srv
       restart: unless-stopped
       environment:
-       - CALLBACK_ROOT_URL=http://localhost:8080/itbsrv
+        - CALLBACK_ROOT_URL=http://hapi-fhir:8080/fhir
       ports:
-       - "8080:8080"
+        - "8080:8080"
+      depends_on:
+        - hapi-fhir   
+
    gitb-ui:
       image: isaitb/gitb-ui
       container_name: itb-ui
       restart: unless-stopped
       ports:
-       - "9000:9000"
+        - "9000:9000"
       environment:
-       - THEME=ec
-       - AUTOMATION_ENABLED=true
+        - THEME=ec
+        - AUTOMATION_ENABLED=true
       volumes:
-       - gitb-repo:/gitb-repository
+        - gitb-repo:/gitb-repository
       depends_on:
-       gitb-redis:
-         condition: service_started
-       gitb-mysql:
-         condition: service_healthy
-       gitb-srv:
-         condition: service_started
+        gitb-redis:
+          condition: service_started
+        gitb-mysql:
+          condition: service_healthy
+        gitb-srv:
+          condition: service_started
+
+
+   # ---------------------------
+   # HAPI FHIR SERVER
+   # ---------------------------
+
+   hapi-fhir:
+      image: hapiproject/hapi:v6.10.0   # 
+      container_name: hapi-fhir
+      restart: unless-stopped
+      ports:
+        - "8081:8080"
+      volumes:
+        - hapi-data:/data/hapi
+      environment:
+        - hapi.fhir.allow_external_references=true
+        - hapi.fhir.allow_multiple_delete=true
+        - hapi.fhir.reuse_cached_search_results_millis=60000

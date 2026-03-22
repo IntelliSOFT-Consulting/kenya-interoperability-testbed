@@ -4,7 +4,7 @@
         <gitb:name>IPS Bundle</gitb:name>
         <gitb:version>1.0</gitb:version>
         <gitb:description>
-            Test case to validate an IPS FHIR Bundle payload by forwarding it to a HAPI server and checking the server response.
+            Test case to validate an IPS FHIR Bundle payload by forwarding it to a HAPI server and capturing the exact server response.
         </gitb:description>
     </metadata>
 
@@ -14,42 +14,37 @@
     </actors>
 
     <steps>
-        <!-- Assign headers -->
         <assign to="httpHeaders{Content-Type}">"application/fhir+json"</assign>
 
-        <!-- Receive FHIR Bundle payload -->
         <receive id="receiveBundleData" desc="Receive FHIR Bundle payload" handler="HttpMessagingV2">
             <input name="uriExtension">"/receiveBundle"</input>
             <input name="method">"POST"</input>
             <input name="status">200</input>
-            <input name="body">"ACK-BUNDLE-123456"</input>
             <input name="headers">$httpHeaders</input>
         </receive>
 
-        <!-- Forward received Bundle to HAPI FHIR server -->
         <send id="forwardToHAPI" desc="Forward Bundle to HAPI server" handler="HttpMessagingV2">
-            <input name="uri">"http://hapi.fhir.org/baseR4/Bundle"</input>
+            <input name="uri">"http://hapi-fhir:8080/fhir/Bundle"</input>
             <input name="method">"POST"</input>
             <input name="body">$receiveBundleData{request}{body}</input>
             <input name="headers">$httpHeaders</input>
         </send>
 
-        <!-- Validate HAPI FHIR response -->
         <verify handler="StringValidator" desc="Validate server response status">
             <input name="actual">$forwardToHAPI{response}{status}</input>
             <input name="expected">"201"</input>
             <input name="failureMessage">"The server response status was not 201."</input>
         </verify>
 
-        <!-- Optional: Add more validations for response body -->
+        <assign to="hapiResponse">$forwardToHAPI{response}{body}</assign>
     </steps>
 
     <output>
         <success>
-            <default>"FHIR Bundle payload validation succeeded based on server response."</default>
+            <default>$hapiResponse</default>
         </success>
         <failure>
-            <default>"FHIR Bundle payload validation failed. Check the server response for details."</default>
+            <default>$hapiResponse</default>
         </failure>
     </output>
 </testcase>
