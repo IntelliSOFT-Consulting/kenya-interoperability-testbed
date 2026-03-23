@@ -25,7 +25,7 @@
         </receive>
 
         <send id="forwardToHAPI" desc="Forward to HAPI server" handler="HttpMessagingV2">
-            <input name="uri">"http://hapi-fhir:8080/fhir/Condition"</input>
+            <input name="uri">"http://hapi-fhir:8080/fhir/Condition/$validate"</input>
             <input name="method">"POST"</input>
             <input name="body">$receivePatientData{request}{body}</input>
             <input name="headers">$httpHeaders</input>
