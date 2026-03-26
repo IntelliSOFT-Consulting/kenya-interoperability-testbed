@@ -1,18 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuite id="patientValidationSuite" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <metadata>
-        <gitb:name>SIL (IPS) Payload Validation Suite</gitb:name>
-        <gitb:description>Test suite to validate (SIL) IPS payloads by forwarding them to a HAPI server.</gitb:description>
+        <gitb:name>Kenya Patient Summary (KPS) Interoperability Conformance Suite</gitb:name>
+        <gitb:description>A comprehensive validation suite designed to assess structural integrity,
+            semantic correctness, and interoperability compliance of Kenya Patient Summary (KPS)
+            FHIR payloads. The suite forwards submitted resources to a reference HAPI FHIR server
+            for rigorous standards-based validation against national implementation requirements.</gitb:description>
         <gitb:version>1.0</gitb:version>
     </metadata>
     <actors>
         <gitb:actor id="ClientSystem">
             <gitb:name>Client System</gitb:name>
-            <gitb:desc>The system that sends patient payloads for validation.</gitb:desc>
+            <gitb:desc>An external clinical or health information system that generates and submits
+                KPS-compliant FHIR resources for validation as part of interoperability testing.</gitb:desc>
         </gitb:actor>
         <gitb:actor id="HAPIServer">
-            <gitb:name>HAPI Server</gitb:name>
-            <gitb:desc>The server that validates the patient payloads.</gitb:desc>
+            <gitb:name>Reference Validation Engine (HAPI FHIR Server)</gitb:name>
+            <gitb:desc>A standards-compliant FHIR validation service responsible for evaluating submitted
+                payloads against FHIR specifications, terminology bindings, and Kenya-specific
+                implementation constraints.</gitb:desc>
         </gitb:actor>
     </actors>
     <testcase id="testCasePatientValidation"/>
@@ -22,5 +28,7 @@
     <testcase id="testCaseCarePlanValidation"/>
     <testcase id="testCaseProcedureValidation"/>
     <testcase id="testCaseMedicationValidation"/>
+    <testcase id="testCaseMedicationRequestValidation"/> 
     <testcase id="testCaseBundleValidation"/> 
+    
 </testsuite>

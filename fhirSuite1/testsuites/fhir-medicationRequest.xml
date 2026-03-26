@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testcase id="testCaseMedicationRequestValidation" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+
+    <metadata>
+        <gitb:name>MedicationRequest</gitb:name>
+        <gitb:version>1.0</gitb:version>
+        <gitb:description>
+            Validation of a MedicationRequest resource against the Kenya Patient Summary (KPS) 
+            Implementation Guide. This test ensures the prescription data adheres to national 
+            standards for mandatory elements and structural integrity.
+        </gitb:description>
+    </metadata>
+
+    <actors>
+        <gitb:actor id="ClientSystem" name="Client System" role="SUT"/>
+        <gitb:actor id="HAPIServer" name="HAPI Server"/>
+    </actors>
+
+    <steps>
+        <assign to="httpHeaders{Content-Type}">"application/json"</assign>
+
+        <receive id="receiveMedicationData" desc="Receive MedicationRequest payload" handler="HttpMessagingV2">
+            <input name="uriExtension">"/MedicationRequest"</input>
+            <input name="method">"POST"</input>
+            <input name="status">200</input>
+            <input name="headers">$httpHeaders</input>
+        </receive>
+
+        <send id="forwardToHAPI" desc="Forward MedicationRequest payload to HAPI server" handler="HttpMessagingV2">
+            <input name="uri">"http://hapi-fhir:8080/fhir/MedicationRequest/$validate"</input>
+            <input name="method">"POST"</input>
+            <input name="body">$receiveMedicationData{request}{body}</input>
+            <input name="headers">$httpHeaders</input>
+        </send>
+
+        <verify handler="StringValidator" desc="Validate server response status">
+            <input name="actual">$forwardToHAPI{response}{status}</input>
+            <input name="expected">"201"</input>
+        </verify>
+
+        <assign to="hapiResponse">$forwardToHAPI{response}{body}</assign>
+    </steps>
+
+    <output>
+        <success>
+            <default>$hapiResponse</default>
+        </success>
+        <failure>
+            <default>$hapiResponse</default>
+        </failure>
+    </output>
+
+</testcase>
