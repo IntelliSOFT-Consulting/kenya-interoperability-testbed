@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testcase id="testCaseProcedureValidation" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
     <metadata>
-        <gitb:name>Procedure</gitb:name>
+        <gitb:name>Procedure (KPS)</gitb:name>
         <gitb:version>1.0</gitb:version>
-        <gitb:description>Test case to validate a patient procedure payload by forwarding it to a HAPI server and capturing the exact server response.</gitb:description>
+        <gitb:description>Validation of a Procedure resource against the Kenya Patient Summary (KPS) Implementation Guide. This test ensures the procedure data adheres to national standards for mandatory elements, structural integrity, and successful persistence in a FHIR server.</gitb:description>
     </metadata>
     <actors>
         <gitb:actor id="ClientSystem" name="Client System" role="SUT"/>

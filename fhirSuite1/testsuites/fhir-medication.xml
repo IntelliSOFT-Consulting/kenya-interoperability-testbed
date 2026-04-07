@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testcase id="testCaseMedicationValidation" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
     <metadata>
-        <gitb:name>Medication</gitb:name>
+        <gitb:name>Medication (KPS)</gitb:name>
         <gitb:version>1.0</gitb:version>
-        <gitb:description>Test case to validate a patient medication payload by forwarding it to a HAPI server and checking the server response.</gitb:description>
+        <gitb:description>Validation of a Medication resource against the KPS Implementation Guide. This test verifies that medicinal product details, including coding systems (e.g., NHDD codes, ICD-11 codes), are correctly structured to support pharmacy and supply chain interoperability.</gitb:description>
     </metadata>
     <actors>
         <gitb:actor id="ClientSystem" name="Client System" role="SUT"/>

@@ -45,6 +45,10 @@ services:
       environment:
         - THEME=ec
         - AUTOMATION_ENABLED=true
+        # --- ADD THESE THREE LINES ---
+        - TESTBED_HOME_LINK=http://41.204.187.172:9000/
+        - AUTHENTICATION_COOKIE_PATH=/
+        - WEB_CONTEXT_ROOT=/
       volumes:
         - gitb-repo:/gitb-repository
       depends_on:

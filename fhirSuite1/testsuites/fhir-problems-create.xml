@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testcase id="testCaseConditionValidation" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
     <metadata>
-        <gitb:name>Condition</gitb:name>
+        <gitb:name>Condition (KPS)</gitb:name>
         <gitb:version>1.0</gitb:version>
         <gitb:description>
-            Test case to validate a patient condition payload by forwarding it to a HAPI server 
-            and capturing the exact server response.
+            Validation of a Condition resource against the KPS Implementation Guide. This test ensures that diagnoses and health concerns are recorded using standardized clinical terminologies (e.g., ICD-11 or SNOMED-CT) to maintain a consistent longitudinal patient record.
         </gitb:description>
     </metadata>
 

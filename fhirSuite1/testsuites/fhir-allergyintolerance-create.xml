@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testcase id="testCaseAllergyIntoleranceValidation" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
     <metadata>
-        <gitb:name>Patient Allergy Intolerance Payload Validation</gitb:name>
+        <gitb:name>Allergy Intolerance (KPS)</gitb:name>
         <gitb:version>1.0</gitb:version>
-        <gitb:description>Test case to validate a patient allergy intolerance payload by forwarding it to a HAPI server and capturing the exact server response.</gitb:description>
+        <gitb:description>Validation of an AllergyIntolerance resource against the KPS Implementation Guide. 
+        This test ensures the accurate recording of a patient’s risk for adverse reactions to substances, verifying that criticality and clinical status meet national safety reporting requirements.</gitb:description>
     </metadata>
 
     <actors>

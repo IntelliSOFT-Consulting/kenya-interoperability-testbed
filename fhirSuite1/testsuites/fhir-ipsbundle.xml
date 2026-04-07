@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testcase id="testCaseBundleValidation" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
     <metadata>
-        <gitb:name>IPS Bundle</gitb:name>
+        <gitb:name>Bundle (KPS)</gitb:name>
         <gitb:version>1.0</gitb:version>
         <gitb:description>
-            Test case to validate an IPS FHIR Bundle payload by forwarding it to a HAPI server and capturing the exact server response.
+            Validation of a Bundle resource against the KPS Implementation Guide. This test ensures that the collection of clinical resources (e.g., for a document or message exchange) is correctly sequenced, typed, and contains the mandatory metadata for secure transmission.
         </gitb:description>
     </metadata>
 

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testcase id="testCaseImmunizationValidation" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
     <metadata>
-        <gitb:name>Immunization</gitb:name>
+        <gitb:name>Immunization (KPS)</gitb:name>
         <gitb:version>1.0</gitb:version>
-        <gitb:description>Test case to validate a patient immunization payload by forwarding it to a HAPI server and capturing the exact server response.</gitb:description>
+        <gitb:description>Validation of an Immunization resource against the KPS Implementation Guide. This test verifies that vaccination records include mandatory data such as lot numbers, 
+        site of administration, and vaccine codes aligned with Kenya's Expanded Programme on Immunization (EPI).</gitb:description>
     </metadata>
     <actors>
         <gitb:actor id="ClientSystem" name="Client System" role="SUT"/>
