@@ -2,11 +2,11 @@
 <testcase id="testCasePatientValidation" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
 
     <metadata>
-        <gitb:name>Patient</gitb:name>
+        <gitb:name>Patient (KPS)</gitb:name>
         <gitb:version>1.0</gitb:version>
         <gitb:description>
-            Test case to validate a patient payload by forwarding it to a HAPI server
-            and capturing the exact server response.
+            Validation of a Patient resource against the KPS Implementation Guide. 
+            This test ensures that core demographic data, including national identifiers and contact details, conforms to Kenya’s health information standards for unique patient identification.
         </gitb:description>
     </metadata>
 
