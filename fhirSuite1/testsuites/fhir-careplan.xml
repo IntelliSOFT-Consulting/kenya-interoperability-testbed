@@ -20,7 +20,7 @@
         </receive>
 
         <send id="forwardToHAPI" desc="Forward CarePlan payload to HAPI server" handler="HttpMessagingV2">
-            <input name="uri">"http://hapi-fhir:8080/fhir/CarePlan/$validate"</input>
+            <input name="uri">"http://hapi-fhir:8080/fhir/CarePlan"</input>
             <input name="method">"POST"</input>
             <input name="body">$receivePatientData{request}{body}</input>
             <input name="headers">$httpHeaders</input>
