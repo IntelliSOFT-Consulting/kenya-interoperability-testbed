@@ -26,7 +26,7 @@
         </receive>
 
         <send id="forwardToHAPI" desc="Forward patient payload to HAPI server" handler="HttpMessagingV2">
-            <input name="uri">"http://hapi-fhir:8080/fhir/Patient"</input>
+            <input name="uri">"http://hapi.fhir.org/baseR4/Patient"</input>
             <input name="method">"POST"</input>
             <input name="body">$receivePatientData{request}{body}</input>
             <input name="headers">$httpHeaders</input>

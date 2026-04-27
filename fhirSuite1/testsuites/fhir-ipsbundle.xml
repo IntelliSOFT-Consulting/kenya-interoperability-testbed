@@ -24,7 +24,7 @@
         </receive>
 
         <send id="forwardToHAPI" desc="Forward Bundle to HAPI server" handler="HttpMessagingV2">
-            <input name="uri">"http://hapi-fhir:8080/fhir/Bundle"</input>
+            <input name="uri">"http://hapi.fhir.org/baseR4/Bundle"</input>
             <input name="method">"POST"</input>
             <input name="body">$receiveBundleData{request}{body}</input>
             <input name="headers">$httpHeaders</input>
