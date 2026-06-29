@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testcase id="testCaseConditionUpdate" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+    <metadata>
+        <gitb:name>Condition (KPS)</gitb:name>
+        <gitb:version>1.0</gitb:version>
+        <gitb:description>
+            Validation of a Condition resource update (HTTP PUT) and subsequent fetch (HTTP GET)
+            against the KPS Implementation Guide. The client system first submits a new Condition for
+            creation. The server-assigned ID from that response is then used to build the update URL
+            (Condition/{id}), which the client must call next with its update payload, followed by a
+            read request to confirm the update was applied.
+        </gitb:description>
+    </metadata>
+
+    <actors>
+        <gitb:actor id="ClientSystem" name="Client System" role="SUT"/>
+        <gitb:actor id="HAPIServer" name="HAPI Server"/>
+    </actors>
+
+    <steps>
+        <assign to="httpHeaders{Content-Type}">"application/json"</assign>
+
+        <receive id="receiveConditionCreate" desc="Receive new Condition payload" handler="HttpMessagingV2">
+            <input name="uriExtension">"/Condition"</input>
+            <input name="method">"POST"</input>
+            <input name="status">200</input>
+            <input name="headers">$httpHeaders</input>
+        </receive>
+
+        <process id="checkMetaProfile" desc="Check whether the resource declares a meta.profile" handler="JsonPathProcessor" operation="exists" output="metaProfileExists">
+            <input name="content">$receiveConditionCreate{request}{body}</input>
+            <input name="expression">"$.meta.profile"</input>
+        </process>
+
+        <verify id="verifyMetaProfile" desc="Ensure the KPS profile to validate against is declared" handler="ExpressionValidator">
+            <input name="expression">$metaProfileExists</input>
+            <input name="failureMessage">"The submitted Condition resource is missing 'meta.profile'. Add a 'meta.profile' entry referencing the KPS Condition profile (e.g. https://nshr-uat.sha.go.ke/fhir/StructureDefinition/ke-kps-condition) so the Test Bed knows which profile to validate this resource against."</input>
+        </verify>
+
+        <send id="forwardConditionCreateToHAPI" desc="Forward new Condition to HAPI server" handler="HttpMessagingV2">
+            <input name="uri">"http://hapi-fhir-kenyaitb:8080/fhir/Condition"</input>
+            <input name="method">"POST"</input>
+            <input name="body">$receiveConditionCreate{request}{body}</input>
+            <input name="headers">$httpHeaders</input>
+        </send>
+
+        <verify handler="StringValidator" desc="Validate Condition was created">
+            <input name="actual">$forwardConditionCreateToHAPI{response}{status}</input>
+            <input name="expected">"201"</input>
+        </verify>
+
+        <process id="extractConditionId" handler="JsonPathProcessor" operation="process" output="conditionId" desc="Extract server-assigned Condition ID">
+            <input name="content">$forwardConditionCreateToHAPI{response}{body}</input>
+            <input name="expression">"$.id"</input>
+        </process>
+
+        <receive id="receiveConditionUpdate" desc="Receive Condition update payload" handler="HttpMessagingV2">
+            <input name="uriExtension">"/Condition/" || $conditionId</input>
+            <input name="method">"PUT"</input>
+            <input name="status">200</input>
+            <input name="headers">$httpHeaders</input>
+        </receive>
+
+        <send id="forwardConditionUpdateToHAPI" desc="Forward Condition update to HAPI server" handler="HttpMessagingV2">
+            <input name="uri">"http://hapi-fhir-kenyaitb:8080/fhir/Condition/" || $conditionId</input>
+            <input name="method">"PUT"</input>
+            <input name="body">$receiveConditionUpdate{request}{body}</input>
+            <input name="headers">$httpHeaders</input>
+        </send>
+
+        <verify handler="StringValidator" desc="Validate server response status">
+            <input name="actual">$forwardConditionUpdateToHAPI{response}{status}</input>
+            <input name="expected">"200"</input>
+        </verify>
+
+        <receive id="receiveConditionRead" desc="Receive Condition read request" handler="HttpMessagingV2">
+            <input name="uriExtension">"/Condition/" || $conditionId</input>
+            <input name="method">"GET"</input>
+            <input name="status">200</input>
+        </receive>
+
+        <send id="forwardConditionReadToHAPI" desc="Forward Condition read request to HAPI server" handler="HttpMessagingV2">
+            <input name="uri">"http://hapi-fhir-kenyaitb:8080/fhir/Condition/" || $conditionId</input>
+            <input name="method">"GET"</input>
+        </send>
+
+        <verify handler="StringValidator" desc="Validate server response status">
+            <input name="actual">$forwardConditionReadToHAPI{response}{status}</input>
+            <input name="expected">"200"</input>
+        </verify>
+
+        <assign to="hapiResponse">$forwardConditionReadToHAPI{response}{body}</assign>
+    </steps>
+
+    <output>
+        <success>
+            <default>$hapiResponse</default>
+        </success>
+        <failure>
+            <default>$hapiResponse</default>
+        </failure>
+    </output>
+</testcase>

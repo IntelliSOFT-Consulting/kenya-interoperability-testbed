@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testcase id="testCaseAllergyIntoleranceUpdate" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+    <metadata>
+        <gitb:name>Allergy Intolerance (KPS)</gitb:name>
+        <gitb:version>1.0</gitb:version>
+        <gitb:description>
+            Validation of an AllergyIntolerance resource update (HTTP PUT) and subsequent fetch
+            (HTTP GET) against the KPS Implementation Guide. The client system first submits a new
+            AllergyIntolerance for creation. The server-assigned ID from that response is then used to
+            build the update URL (AllergyIntolerance/{id}), which the client must call next with its
+            update payload, followed by a read request to confirm the update was applied.
+        </gitb:description>
+    </metadata>
+
+    <actors>
+        <gitb:actor id="ClientSystem" name="Client System" role="SUT"/>
+        <gitb:actor id="HAPIServer" name="HAPI Server"/>
+    </actors>
+
+    <steps>
+        <assign to="httpHeaders{Content-Type}">"application/json"</assign>
+
+        <receive id="receiveAllergyIntoleranceCreate" desc="Receive new AllergyIntolerance payload" handler="HttpMessagingV2">
+            <input name="uriExtension">"/AllergyIntolerance"</input>
+            <input name="method">"POST"</input>
+            <input name="status">200</input>
+            <input name="headers">$httpHeaders</input>
+        </receive>
+
+        <send id="forwardAllergyIntoleranceCreateToHAPI" desc="Forward new AllergyIntolerance to HAPI server" handler="HttpMessagingV2">
+            <input name="uri">"http://hapi-fhir-kenyaitb:8080/fhir/AllergyIntolerance"</input>
+            <input name="method">"POST"</input>
+            <input name="body">$receiveAllergyIntoleranceCreate{request}{body}</input>
+            <input name="headers">$httpHeaders</input>
+        </send>
+
+        <verify handler="StringValidator" desc="Validate AllergyIntolerance was created">
+            <input name="actual">$forwardAllergyIntoleranceCreateToHAPI{response}{status}</input>
+            <input name="expected">"201"</input>
+        </verify>
+
+        <process id="extractAllergyIntoleranceId" handler="JsonPathProcessor" operation="process" output="allergyIntoleranceId" desc="Extract server-assigned AllergyIntolerance ID">
+            <input name="content">$forwardAllergyIntoleranceCreateToHAPI{response}{body}</input>
+            <input name="expression">"$.id"</input>
+        </process>
+
+        <receive id="receiveAllergyIntoleranceUpdate" desc="Receive AllergyIntolerance update payload" handler="HttpMessagingV2">
+            <input name="uriExtension">"/AllergyIntolerance/" || $allergyIntoleranceId</input>
+            <input name="method">"PUT"</input>
+            <input name="status">200</input>
+            <input name="headers">$httpHeaders</input>
+        </receive>
+
+        <send id="forwardAllergyIntoleranceUpdateToHAPI" desc="Forward AllergyIntolerance update to HAPI server" handler="HttpMessagingV2">
+            <input name="uri">"http://hapi-fhir-kenyaitb:8080/fhir/AllergyIntolerance/" || $allergyIntoleranceId</input>
+            <input name="method">"PUT"</input>
+            <input name="body">$receiveAllergyIntoleranceUpdate{request}{body}</input>
+            <input name="headers">$httpHeaders</input>
+        </send>
+
+        <verify handler="StringValidator" desc="Validate server response status">
+            <input name="actual">$forwardAllergyIntoleranceUpdateToHAPI{response}{status}</input>
+            <input name="expected">"200"</input>
+        </verify>
+
+        <receive id="receiveAllergyIntoleranceRead" desc="Receive AllergyIntolerance read request" handler="HttpMessagingV2">
+            <input name="uriExtension">"/AllergyIntolerance/" || $allergyIntoleranceId</input>
+            <input name="method">"GET"</input>
+            <input name="status">200</input>
+        </receive>
+
+        <send id="forwardAllergyIntoleranceReadToHAPI" desc="Forward AllergyIntolerance read request to HAPI server" handler="HttpMessagingV2">
+            <input name="uri">"http://hapi-fhir-kenyaitb:8080/fhir/AllergyIntolerance/" || $allergyIntoleranceId</input>
+            <input name="method">"GET"</input>
+        </send>
+
+        <verify handler="StringValidator" desc="Validate server response status">
+            <input name="actual">$forwardAllergyIntoleranceReadToHAPI{response}{status}</input>
+            <input name="expected">"200"</input>
+        </verify>
+
+        <assign to="hapiResponse">$forwardAllergyIntoleranceReadToHAPI{response}{body}</assign>
+    </steps>
+
+    <output>
+        <success>
+            <default>$hapiResponse</default>
+        </success>
+        <failure>
+            <default>$hapiResponse</default>
+        </failure>
+    </output>
+</testcase>
