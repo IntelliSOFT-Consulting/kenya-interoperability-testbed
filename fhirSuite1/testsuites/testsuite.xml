@@ -21,14 +21,14 @@
                 implementation constraints.</gitb:desc>
         </gitb:actor>
     </actors>
-    <testcase id="testCasePatientValidation"/>
-    <testcase id="testCaseConditionValidation"/>
-    <testcase id="testCaseAllergyIntoleranceValidation"/>
-    <testcase id="testCaseImmunizationValidation"/>
-    <testcase id="testCaseCarePlanValidation"/>
-    <testcase id="testCaseProcedureValidation"/>
-    <testcase id="testCaseMedicationValidation"/>
-    <testcase id="testCaseMedicationRequestValidation"/> 
-    <testcase id="testCaseBundleValidation"/> 
-    
+    <testcase id="testCasePatientUpdate"/>
+    <testcase id="testCaseConditionUpdate"/>
+    <testcase id="testCaseAllergyIntoleranceUpdate"/>
+    <testcase id="testCaseImmunizationUpdate"/>
+    <testcase id="testCaseCarePlanUpdate"/>
+    <testcase id="testCaseProcedureUpdate"/>
+    <testcase id="testCaseMedicationUpdate"/>
+    <testcase id="testCaseMedicationRequestUpdate"/>
+    <testcase id="testCaseBundleUpdate"/>
+
 </testsuite>

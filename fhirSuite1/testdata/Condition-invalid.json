@@ -1,0 +1,25 @@
+{
+  "resourceType": "Condition",
+  "id": "ConditionKPSInvalid",
+  "meta": {
+    "profile": [
+      "https://nshr-uat.sha.go.ke/fhir/StructureDefinition/ke-kps-condition"
+    ]
+  },
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p class=\"res-header-id\"><b>Generated Narrative: Condition ConditionKPSInvalid</b></p><a name=\"ConditionKPSInvalid\"> </a><a name=\"hcConditionKPSInvalid\"> </a><div style=\"display: inline-block; background-color: #d9e0e7; padding: 6px; margin: 4px; border: 1px solid #8da1b4; border-radius: 5px; line-height: 60%\"><p style=\"margin-bottom: 0px\"/><p style=\"margin-bottom: 0px\">Profile: <a href=\"StructureDefinition-ke-kps-condition.html\">Condition Profile - KPS</a></p></div><p><b>code</b>: <span title=\"Codes:{http://hl7.org/fhir/sid/icd-10 I10}\">Essential (primary) hypertension</span></p><p><b>subject</b>: <a href=\"Patient-PatientKPS.html\">Amina Mohamed  Female, DoB: 1992-03-25 ( http://moh.kenya/identifier/nationalID-no#12345678)</a></p></div>"
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://hl7.org/fhir/sid/icd-10",
+        "code": "I10",
+        "display": "Essential (primary) hypertension"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/450"
+  }
+}

@@ -1,7 +1,7 @@
 volumes:
    gitb-repo:
    gitb-dbdata:
-   hapi-data:
+   itbKenyaHapi:
 
 services:
 
@@ -30,11 +30,9 @@ services:
       container_name: itb-srv
       restart: unless-stopped
       environment:
-        - CALLBACK_ROOT_URL=http://hapi-fhir:8080/fhir
+        - CALLBACK_ROOT_URL=http://localhost:8080
       ports:
         - "8080:8080"
-      depends_on:
-        - hapi-fhir   
 
    gitb-ui:
       image: isaitb/gitb-ui
@@ -45,8 +43,7 @@ services:
       environment:
         - THEME=ec
         - AUTOMATION_ENABLED=true
-        # --- ADD THESE THREE LINES ---
-        - TESTBED_HOME_LINK=http://41.204.187.172:9000/
+        - TESTBED_HOME_LINK=http://localhost:9000/
         - AUTHENTICATION_COOKIE_PATH=/
         - WEB_CONTEXT_ROOT=/
       volumes:
@@ -64,15 +61,16 @@ services:
    # HAPI FHIR SERVER
    # ---------------------------
 
-   hapi-fhir:
-      image: hapiproject/hapi:v6.10.0   # 
+   hapi-fhir-kenyaitb:
+      image: hapiproject/hapi:v6.10.0
       container_name: hapi-fhir
       restart: unless-stopped
       ports:
-        - "8081:8080"
+        - "8086:8080"
       volumes:
-        - hapi-data:/data/hapi
+        - itbKenyaHapi:/data/hapi
       environment:
+        - hapi.fhir.fhir_version=R4
         - hapi.fhir.allow_external_references=true
         - hapi.fhir.allow_multiple_delete=true
         - hapi.fhir.reuse_cached_search_results_millis=60000
