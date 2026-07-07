@@ -63,7 +63,7 @@ services:
 
    hapi-fhir-kenyaitb:
       image: hapiproject/hapi:v6.10.0
-      container_name: hapi-fhir
+      container_name: hapi-fhir-kenyaitb
       restart: unless-stopped
       ports:
         - "8086:8080"
