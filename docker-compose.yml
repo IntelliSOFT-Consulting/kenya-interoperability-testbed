@@ -18,6 +18,9 @@ services:
       image: isaitb/gitb-mysql
       container_name: itb-mysql
       restart: unless-stopped
+      environment:
+        - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+        - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       volumes:
         - gitb-dbdata:/var/lib/mysql
       healthcheck:
@@ -31,6 +34,7 @@ services:
       restart: unless-stopped
       environment:
         - CALLBACK_ROOT_URL=http://localhost:8080
+        - HMAC_KEY=${HMAC_KEY}
       ports:
         - "8080:8080"
 
@@ -46,6 +50,10 @@ services:
         - TESTBED_HOME_LINK=http://localhost:9000/
         - AUTHENTICATION_COOKIE_PATH=/
         - WEB_CONTEXT_ROOT=/
+        - DB_DEFAULT_PASSWORD=${DB_DEFAULT_PASSWORD}
+        - HMAC_KEY=${HMAC_KEY}
+        - APPLICATION_SECRET=${APPLICATION_SECRET}
+        - MASTER_PASSWORD=${MASTER_PASSWORD}
       volumes:
         - gitb-repo:/gitb-repository
       depends_on:
