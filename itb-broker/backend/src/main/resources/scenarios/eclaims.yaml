@@ -1,0 +1,11 @@
+scenarioKey: ECLAIMS
+label: 'eClaims'
+readResources:
+  - Patient
+  - Claim
+  - ClaimResponse
+  - Coverage
+  - Organization
+  - Practitioner
+writeResources:
+  - Claim

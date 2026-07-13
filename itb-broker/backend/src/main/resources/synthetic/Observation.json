@@ -1,0 +1,40 @@
+{
+  "resourceType": "Observation",
+  "identifier": [
+    {
+      "system": "http://dha.go.ke/fhir/identifier/observation",
+      "value": "SYN-OBS-0001"
+    }
+  ],
+  "status": "final",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+          "code": "vital-signs",
+          "display": "Vital Signs"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "8867-4",
+        "display": "Heart rate"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/SYN-PAT-0001"
+  },
+  "effectiveDateTime": "2026-01-05T09:30:00+03:00",
+  "valueQuantity": {
+    "value": 72,
+    "unit": "beats/minute",
+    "system": "http://unitsofmeasure.org",
+    "code": "/min"
+  }
+}

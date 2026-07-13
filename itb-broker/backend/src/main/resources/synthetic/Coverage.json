@@ -1,0 +1,28 @@
+{
+  "resourceType": "Coverage",
+  "identifier": [
+    {
+      "system": "http://dha.go.ke/fhir/identifier/coverage",
+      "value": "SYN-COV-0001"
+    }
+  ],
+  "status": "active",
+  "type": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+        "code": "PUBLICPOL",
+        "display": "public healthcare"
+      }
+    ]
+  },
+  "beneficiary": {
+    "reference": "Patient/SYN-PAT-0001"
+  },
+  "payor": [
+    {
+      "reference": "Organization/SYN-ORG-0001",
+      "display": "Social Health Authority"
+    }
+  ]
+}

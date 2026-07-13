@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testcase id="testCasePatientPublicRoundtrip" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+
+    <metadata>
+        <gitb:name>Patient (Dynamic SUT Round-Trip via System Parameter)</gitb:name>
+        <gitb:version>5.0</gitb:version>
+        <gitb:description>
+            Confirms that a Patient resource submitted through the ITB is actually persisted by, and
+            retrievable from, the real SUT being certified. The target endpoint is not hardcoded in
+            this test case — it's read from the "sutEndpoint" system configuration parameter bound to
+            whichever system is under test for this session ($SYSTEM{sutEndpoint}, a GITB-native
+            per-system config value set once per SUT by an admin in gitb-ui when its conformance
+            statement is configured — see docs.itb.ec.europa.eu/docs/tdl/latest/expressions). ITB
+            forwards the create there, then GETs the resource back by the ID the SUT assigned and
+            compares the family name to confirm the round trip worked — one test case, reusable across
+            every SUT, no per-system TDL file needed.
+        </gitb:description>
+    </metadata>
+
+    <actors>
+        <gitb:actor id="ClientSystem" name="Client System" role="SUT"/>
+    </actors>
+
+    <steps>
+        <assign to="httpHeaders{Content-Type}">"application/fhir+json"</assign>
+
+        <receive id="receivePublicPatientCreate" desc="Receive new patient payload" handler="HttpMessagingV2">
+            <input name="uriExtension">"/Patient"</input>
+            <input name="method">"POST"</input>
+            <input name="status">200</input>
+            <input name="headers">$httpHeaders</input>
+        </receive>
+
+        <process id="extractSentFamilyName" handler="JsonPathProcessor" operation="process" output="sentFamilyName" desc="Extract family name from the submitted payload, to check against the read-back">
+            <input name="content">$receivePublicPatientCreate{request}{body}</input>
+            <input name="expression">"$.name[0].family"</input>
+        </process>
+
+        <send id="forwardCreateToSut" desc="Forward new patient to the SUT under test — endpoint read from this system's sutEndpoint configuration parameter" handler="HttpMessagingV2">
+            <input name="uri">$SYSTEM{sutEndpoint}</input>
+            <input name="method">"POST"</input>
+            <input name="body">$receivePublicPatientCreate{request}{body}</input>
+            <input name="headers">$httpHeaders</input>
+        </send>
+
+        <!-- Captured for diagnostics only — not verified. SUT create-response status conventions vary
+             too much (200 vs 201 vs 204) to gate the test on it; the GET-by-ID step below is the
+             actual proof that the write succeeded. -->
+        <assign to="createStatus">$forwardCreateToSut{response}{status}</assign>
+
+        <process id="extractSutPatientId" handler="JsonPathProcessor" operation="process" output="sutPatientId" desc="Extract the server-assigned ID — this step itself fails the test case if the create response body did not include one">
+            <input name="content">$forwardCreateToSut{response}{body}</input>
+            <input name="expression">"$.id"</input>
+        </process>
+
+        <send id="fetchFromSut" desc="Retrieve the patient back from the SUT by ID — a capability every SUT must support" handler="HttpMessagingV2">
+            <input name="uri">$SYSTEM{sutEndpoint} || "/" || $sutPatientId</input>
+            <input name="method">"GET"</input>
+            <input name="headers">$httpHeaders</input>
+        </send>
+
+        <assign to="lastStatus">$fetchFromSut{response}{status}</assign>
+        <assign to="lastBody">$fetchFromSut{response}{body}</assign>
+
+        <verify handler="StringValidator" desc="Validate the patient could be retrieved back by ID">
+            <input name="actual">$fetchFromSut{response}{status}</input>
+            <input name="expected">"200"</input>
+        </verify>
+
+        <process id="extractRetrievedFamilyName" handler="JsonPathProcessor" operation="process" output="retrievedFamilyName" desc="Extract family name from the retrieved payload">
+            <input name="content">$fetchFromSut{response}{body}</input>
+            <input name="expression">"$.name[0].family"</input>
+        </process>
+
+        <verify handler="StringValidator" desc="Confirm the retrieved patient's family name matches what was submitted, proving the write was persisted correctly and is readable by ID">
+            <input name="actual">$retrievedFamilyName</input>
+            <input name="expected">$sentFamilyName</input>
+        </verify>
+
+    </steps>
+
+    <output>
+        <success>
+            <default>"Patient " || $sutPatientId || " created on " || $SYSTEM{shortName} || "'s SUT (HTTP " || $createStatus || ") and retrieved by ID; family name matched: " || $retrievedFamilyName</default>
+        </success>
+        <failure>
+            <default>"Dynamic SUT round trip failed for system " || $SYSTEM{shortName} || " — endpoint=" || $SYSTEM{sutEndpoint} || ", create HTTP " || $createStatus || ", read HTTP " || $lastStatus || " - " || $lastBody</default>
+        </failure>
+    </output>
+
+</testcase>

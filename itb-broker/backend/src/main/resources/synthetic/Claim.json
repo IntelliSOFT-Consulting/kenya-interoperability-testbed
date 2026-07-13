@@ -1,0 +1,61 @@
+{
+  "resourceType": "Claim",
+  "identifier": [
+    {
+      "system": "http://dha.go.ke/fhir/identifier/claim",
+      "value": "SYN-CLM-0001"
+    }
+  ],
+  "status": "active",
+  "type": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+        "code": "institutional"
+      }
+    ]
+  },
+  "use": "claim",
+  "patient": {
+    "reference": "Patient/SYN-PAT-0001"
+  },
+  "created": "2026-01-05",
+  "provider": {
+    "reference": "Organization/SYN-ORG-0001"
+  },
+  "priority": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/processpriority",
+        "code": "normal"
+      }
+    ]
+  },
+  "insurance": [
+    {
+      "sequence": 1,
+      "focal": true,
+      "coverage": {
+        "reference": "Coverage/SYN-COV-0001"
+      }
+    }
+  ],
+  "item": [
+    {
+      "sequence": 1,
+      "productOrService": {
+        "coding": [
+          {
+            "system": "http://dha.go.ke/fhir/CodeSystem/service-codes",
+            "code": "OPD-CONSULT",
+            "display": "Outpatient consultation"
+          }
+        ]
+      },
+      "unitPrice": {
+        "value": 1500,
+        "currency": "KES"
+      }
+    }
+  ]
+}

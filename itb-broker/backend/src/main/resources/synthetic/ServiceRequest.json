@@ -1,0 +1,35 @@
+{
+  "resourceType": "ServiceRequest",
+  "identifier": [
+    {
+      "system": "http://dha.go.ke/fhir/identifier/service-request",
+      "value": "SYN-SRQ-0001"
+    }
+  ],
+  "status": "active",
+  "intent": "order",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://snomed.info/sct",
+          "code": "108252007",
+          "display": "Laboratory procedure"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "58410-2",
+        "display": "CBC panel - Blood by Automated count"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/SYN-PAT-0001"
+  },
+  "authoredOn": "2026-01-05T08:00:00+03:00"
+}

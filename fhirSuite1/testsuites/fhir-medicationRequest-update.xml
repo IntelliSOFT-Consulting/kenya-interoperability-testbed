@@ -35,6 +35,9 @@
             <input name="headers">$httpHeaders</input>
         </send>
 
+        <assign to="lastStatus">$forwardMedicationRequestCreateToHAPI{response}{status}</assign>
+        <assign to="lastBody">$forwardMedicationRequestCreateToHAPI{response}{body}</assign>
+
         <verify handler="StringValidator" desc="Validate MedicationRequest was created">
             <input name="actual">$forwardMedicationRequestCreateToHAPI{response}{status}</input>
             <input name="expected">"201"</input>
@@ -59,6 +62,9 @@
             <input name="headers">$httpHeaders</input>
         </send>
 
+        <assign to="lastStatus">$forwardMedicationRequestUpdateToHAPI{response}{status}</assign>
+        <assign to="lastBody">$forwardMedicationRequestUpdateToHAPI{response}{body}</assign>
+
         <verify handler="StringValidator" desc="Validate server response status">
             <input name="actual">$forwardMedicationRequestUpdateToHAPI{response}{status}</input>
             <input name="expected">"200"</input>
@@ -75,20 +81,22 @@
             <input name="method">"GET"</input>
         </send>
 
+        <assign to="lastStatus">$forwardMedicationRequestReadToHAPI{response}{status}</assign>
+        <assign to="lastBody">$forwardMedicationRequestReadToHAPI{response}{body}</assign>
+
         <verify handler="StringValidator" desc="Validate server response status">
             <input name="actual">$forwardMedicationRequestReadToHAPI{response}{status}</input>
             <input name="expected">"200"</input>
         </verify>
 
-        <assign to="hapiResponse">$forwardMedicationRequestReadToHAPI{response}{body}</assign>
     </steps>
 
     <output>
         <success>
-            <default>$hapiResponse</default>
+            <default>"HTTP " || $lastStatus || " - " || $lastBody</default>
         </success>
         <failure>
-            <default>$hapiResponse</default>
+            <default>"HTTP " || $lastStatus || " - " || $lastBody</default>
         </failure>
     </output>
 

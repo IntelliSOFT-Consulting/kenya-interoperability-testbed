@@ -1,0 +1,39 @@
+{
+  "resourceType": "Condition",
+  "identifier": [
+    {
+      "system": "http://dha.go.ke/fhir/identifier/condition",
+      "value": "SYN-CON-0001"
+    }
+  ],
+  "clinicalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        "code": "active"
+      }
+    ]
+  },
+  "verificationStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+        "code": "confirmed"
+      }
+    ]
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "38341003",
+        "display": "Hypertensive disorder"
+      }
+    ],
+    "text": "Hypertension"
+  },
+  "subject": {
+    "reference": "Patient/SYN-PAT-0001"
+  },
+  "onsetDateTime": "2024-01-10"
+}
