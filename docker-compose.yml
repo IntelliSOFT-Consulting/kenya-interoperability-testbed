@@ -48,7 +48,7 @@ services:
       environment:
         - THEME=ec
         - AUTOMATION_ENABLED=true
-        - TESTBED_HOME_LINK=http://localhost:9000/
+        - TESTBED_HOME_LINK=${TESTBED_HOME_LINK:-http://localhost:9000/}
         - AUTHENTICATION_COOKIE_PATH=/
         - WEB_CONTEXT_ROOT=/
         - DB_DEFAULT_PASSWORD=${DB_DEFAULT_PASSWORD}
