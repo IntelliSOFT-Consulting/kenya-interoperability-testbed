@@ -1,0 +1,11 @@
+scenarioKey: LAB
+label: 'Laboratory'
+readResources:
+  - Patient
+  - ServiceRequest
+  - DiagnosticReport
+  - Observation
+  - Specimen
+writeResources:
+  - ServiceRequest
+  - DiagnosticReport

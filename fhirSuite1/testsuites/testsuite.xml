@@ -21,7 +21,11 @@
                 implementation constraints.</gitb:desc>
         </gitb:actor>
     </actors>
+    <!-- testCasePatientPublicRoundtrip needs no separate target-server actor: it forwards to
+         $SYSTEM{sutEndpoint}, a per-system GITB configuration parameter set once per SUT in
+         gitb-ui (Systems > conformance statement > Configuration), not a fixed actor. -->
     <testcase id="testCasePatientUpdate"/>
+    <testcase id="testCasePatientPublicRoundtrip"/>
     <testcase id="testCaseConditionUpdate"/>
     <testcase id="testCaseAllergyIntoleranceUpdate"/>
     <testcase id="testCaseImmunizationUpdate"/>

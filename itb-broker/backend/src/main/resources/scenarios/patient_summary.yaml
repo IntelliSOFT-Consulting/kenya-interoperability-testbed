@@ -1,0 +1,13 @@
+scenarioKey: PATIENT_SUMMARY
+label: 'Patient Summary (IPS)'
+readResources:
+  - Patient
+  - Condition
+  - AllergyIntolerance
+  - MedicationStatement
+  - Observation
+  - Immunization
+  - DiagnosticReport
+writeResources:
+  - Patient
+  - Observation

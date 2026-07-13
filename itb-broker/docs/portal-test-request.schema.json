@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dha.go.ke/itb-broker/portal-test-request.schema.json",
+  "title": "ITB Broker — Certification Portal Test Request",
+  "type": "object",
+  "required": ["system", "auth", "testScenarios"],
+  "additionalProperties": false,
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "description": "Portal-generated idempotency/tracking id for this submission."
+    },
+    "submittedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "system": {
+      "type": "object",
+      "required": ["name", "organizationName", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "description": "SUT product name, e.g. 'Aga Khan EMR v2.1'." },
+        "organizationName": { "type": "string" },
+        "version": { "type": "string" },
+        "certificationPortalSystemId": {
+          "type": "string",
+          "description": "Portal's own id for this system record; links results back to the portal."
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "enum": ["BEARER", "BASIC", "NONE"] },
+        "token": { "type": "string", "description": "Bearer token, or 'user:password' for BASIC. Omit for NONE." }
+      }
+    },
+    "patientId": {
+      "type": "string",
+      "description": "Optional, for scoping FHIR queries that require a patient context."
+    },
+    "testScenarios": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/testScenario" }
+    }
+  },
+  "$defs": {
+    "testScenario": {
+      "type": "object",
+      "required": ["scenarioKey", "testCases"],
+      "additionalProperties": false,
+      "properties": {
+        "scenarioKey": {
+          "type": "string",
+          "enum": ["PATIENT_SUMMARY", "ECLAIMS", "LAB", "IMMUNIZATION"],
+          "description": "Fixed catalog of scenario types the broker knows how to run. Must already be configured as such in ITB."
+        },
+        "testCases": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/testCase" }
+        }
+      }
+    },
+    "testCase": {
+      "type": "object",
+      "required": ["resourceType", "endpoint", "testType"],
+      "additionalProperties": false,
+      "properties": {
+        "resourceType": {
+          "type": "string",
+          "description": "FHIR resource type, e.g. 'Patient', 'Claim', 'Observation'. Dynamic — any resource type the SUT exposes for this scenario."
+        },
+        "endpoint": {
+          "type": "string",
+          "format": "uri",
+          "description": "Full SUT URL to call for this resource. Explicit per resource because SUTs don't reliably follow {baseUrl}/{ResourceType} conventions."
+        },
+        "testType": {
+          "type": "string",
+          "enum": ["READ", "WRITE"],
+          "description": "READ = broker fetches from this endpoint and forwards to ITB for validation (Job 1+2). WRITE = broker POSTs a synthetic resource through ITB's write-verify endpoint (Job 3); 'endpoint' is retained for reference/logging but the actual write always goes through ITB, never directly to the SUT."
+        }
+      }
+    }
+  }
+}

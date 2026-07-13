@@ -1,0 +1,8 @@
+scenarioKey: IMMUNIZATION
+label: 'Immunization'
+readResources:
+  - Patient
+  - Immunization
+  - ImmunizationRecommendation
+writeResources:
+  - Immunization

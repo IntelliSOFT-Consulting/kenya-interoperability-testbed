@@ -44,6 +44,9 @@
             <input name="headers">$httpHeaders</input>
         </send>
 
+        <assign to="lastStatus">$forwardConditionCreateToHAPI{response}{status}</assign>
+        <assign to="lastBody">$forwardConditionCreateToHAPI{response}{body}</assign>
+
         <verify handler="StringValidator" desc="Validate Condition was created">
             <input name="actual">$forwardConditionCreateToHAPI{response}{status}</input>
             <input name="expected">"201"</input>
@@ -68,6 +71,9 @@
             <input name="headers">$httpHeaders</input>
         </send>
 
+        <assign to="lastStatus">$forwardConditionUpdateToHAPI{response}{status}</assign>
+        <assign to="lastBody">$forwardConditionUpdateToHAPI{response}{body}</assign>
+
         <verify handler="StringValidator" desc="Validate server response status">
             <input name="actual">$forwardConditionUpdateToHAPI{response}{status}</input>
             <input name="expected">"200"</input>
@@ -84,20 +90,22 @@
             <input name="method">"GET"</input>
         </send>
 
+        <assign to="lastStatus">$forwardConditionReadToHAPI{response}{status}</assign>
+        <assign to="lastBody">$forwardConditionReadToHAPI{response}{body}</assign>
+
         <verify handler="StringValidator" desc="Validate server response status">
             <input name="actual">$forwardConditionReadToHAPI{response}{status}</input>
             <input name="expected">"200"</input>
         </verify>
 
-        <assign to="hapiResponse">$forwardConditionReadToHAPI{response}{body}</assign>
     </steps>
 
     <output>
         <success>
-            <default>$hapiResponse</default>
+            <default>"HTTP " || $lastStatus || " - " || $lastBody</default>
         </success>
         <failure>
-            <default>$hapiResponse</default>
+            <default>"HTTP " || $lastStatus || " - " || $lastBody</default>
         </failure>
     </output>
 </testcase>

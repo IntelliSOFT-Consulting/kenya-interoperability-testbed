@@ -1,0 +1,25 @@
+server:
+  port: 8090
+
+spring:
+  datasource:
+    url: jdbc:postgresql://broker-db:5432/broker_db
+    username: ${DB_USERNAME:broker}
+    password: ${DB_PASSWORD:broker}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+broker:
+  itb:
+    base-url: ${ITB_BASE_URL:http://itb-srv:8080}
+  portal:
+    base-url: ${PORTAL_BASE_URL:https://certification.dha.go.ke}
+    api-key: ${PORTAL_API_KEY:}
+  storage:
+    certificate-path: /app/certificates
+  async:
+    core-pool-size: 5
+    max-pool-size: 20

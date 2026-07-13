@@ -32,6 +32,9 @@
             <input name="headers">$httpHeaders</input>
         </send>
 
+        <assign to="lastStatus">$forwardImmunizationCreateToHAPI{response}{status}</assign>
+        <assign to="lastBody">$forwardImmunizationCreateToHAPI{response}{body}</assign>
+
         <verify handler="StringValidator" desc="Validate Immunization was created">
             <input name="actual">$forwardImmunizationCreateToHAPI{response}{status}</input>
             <input name="expected">"201"</input>
@@ -56,6 +59,9 @@
             <input name="headers">$httpHeaders</input>
         </send>
 
+        <assign to="lastStatus">$forwardImmunizationUpdateToHAPI{response}{status}</assign>
+        <assign to="lastBody">$forwardImmunizationUpdateToHAPI{response}{body}</assign>
+
         <verify handler="StringValidator" desc="Validate server response status">
             <input name="actual">$forwardImmunizationUpdateToHAPI{response}{status}</input>
             <input name="expected">"200"</input>
@@ -72,20 +78,22 @@
             <input name="method">"GET"</input>
         </send>
 
+        <assign to="lastStatus">$forwardImmunizationReadToHAPI{response}{status}</assign>
+        <assign to="lastBody">$forwardImmunizationReadToHAPI{response}{body}</assign>
+
         <verify handler="StringValidator" desc="Validate server response status">
             <input name="actual">$forwardImmunizationReadToHAPI{response}{status}</input>
             <input name="expected">"200"</input>
         </verify>
 
-        <assign to="hapiResponse">$forwardImmunizationReadToHAPI{response}{body}</assign>
     </steps>
 
     <output>
         <success>
-            <default>$hapiResponse</default>
+            <default>"HTTP " || $lastStatus || " - " || $lastBody</default>
         </success>
         <failure>
-            <default>$hapiResponse</default>
+            <default>"HTTP " || $lastStatus || " - " || $lastBody</default>
         </failure>
     </output>
 </testcase>

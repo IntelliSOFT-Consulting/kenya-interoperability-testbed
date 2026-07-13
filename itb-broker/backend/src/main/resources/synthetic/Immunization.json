@@ -1,0 +1,30 @@
+{
+  "resourceType": "Immunization",
+  "identifier": [
+    {
+      "system": "http://dha.go.ke/fhir/identifier/immunization",
+      "value": "SYN-IMM-0001"
+    }
+  ],
+  "status": "completed",
+  "vaccineCode": {
+    "coding": [
+      {
+        "system": "http://hl7.org/fhir/sid/cvx",
+        "code": "208",
+        "display": "COVID-19 vaccine, mRNA, BNT162b2"
+      }
+    ]
+  },
+  "patient": {
+    "reference": "Patient/SYN-PAT-0001"
+  },
+  "occurrenceDateTime": "2025-11-20T10:15:00+03:00",
+  "primarySource": true,
+  "lotNumber": "SYN-LOT-001",
+  "protocolApplied": [
+    {
+      "doseNumberPositiveInt": 1
+    }
+  ]
+}

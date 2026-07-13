@@ -32,6 +32,9 @@
             <input name="headers">$httpHeaders</input>
         </send>
 
+        <assign to="lastStatus">$forwardCarePlanCreateToHAPI{response}{status}</assign>
+        <assign to="lastBody">$forwardCarePlanCreateToHAPI{response}{body}</assign>
+
         <verify handler="StringValidator" desc="Validate CarePlan was created">
             <input name="actual">$forwardCarePlanCreateToHAPI{response}{status}</input>
             <input name="expected">"201"</input>
@@ -56,6 +59,9 @@
             <input name="headers">$httpHeaders</input>
         </send>
 
+        <assign to="lastStatus">$forwardCarePlanUpdateToHAPI{response}{status}</assign>
+        <assign to="lastBody">$forwardCarePlanUpdateToHAPI{response}{body}</assign>
+
         <verify handler="StringValidator" desc="Validate server response status">
             <input name="actual">$forwardCarePlanUpdateToHAPI{response}{status}</input>
             <input name="expected">"200"</input>
@@ -72,20 +78,22 @@
             <input name="method">"GET"</input>
         </send>
 
+        <assign to="lastStatus">$forwardCarePlanReadToHAPI{response}{status}</assign>
+        <assign to="lastBody">$forwardCarePlanReadToHAPI{response}{body}</assign>
+
         <verify handler="StringValidator" desc="Validate server response status">
             <input name="actual">$forwardCarePlanReadToHAPI{response}{status}</input>
             <input name="expected">"200"</input>
         </verify>
 
-        <assign to="hapiResponse">$forwardCarePlanReadToHAPI{response}{body}</assign>
     </steps>
 
     <output>
         <success>
-            <default>$hapiResponse</default>
+            <default>"HTTP " || $lastStatus || " - " || $lastBody</default>
         </success>
         <failure>
-            <default>$hapiResponse</default>
+            <default>"HTTP " || $lastStatus || " - " || $lastBody</default>
         </failure>
     </output>
 </testcase>

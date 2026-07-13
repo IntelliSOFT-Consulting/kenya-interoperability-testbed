@@ -1,0 +1,28 @@
+{
+  "resourceType": "MedicationStatement",
+  "identifier": [
+    {
+      "system": "http://dha.go.ke/fhir/identifier/medication-statement",
+      "value": "SYN-MST-0001"
+    }
+  ],
+  "status": "active",
+  "medicationCodeableConcept": {
+    "coding": [
+      {
+        "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+        "code": "197361",
+        "display": "Amlodipine 5 MG Oral Tablet"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/SYN-PAT-0001"
+  },
+  "effectiveDateTime": "2026-01-01",
+  "dosage": [
+    {
+      "text": "5 mg once daily"
+    }
+  ]
+}

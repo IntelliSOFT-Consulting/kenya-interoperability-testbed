@@ -1,0 +1,32 @@
+{
+  "resourceType": "Patient",
+  "identifier": [
+    {
+      "system": "http://dha.go.ke/fhir/identifier/national-id",
+      "value": "SYN-PAT-0001"
+    }
+  ],
+  "active": true,
+  "name": [
+    {
+      "family": "Wanjiku",
+      "given": ["Amina", "Test"]
+    }
+  ],
+  "telecom": [
+    {
+      "system": "phone",
+      "value": "+254700000001",
+      "use": "mobile"
+    }
+  ],
+  "gender": "female",
+  "birthDate": "1990-04-15",
+  "address": [
+    {
+      "line": ["1 Synthetic Close"],
+      "city": "Nairobi",
+      "country": "KE"
+    }
+  ]
+}

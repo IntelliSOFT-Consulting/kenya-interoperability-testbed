@@ -1,0 +1,44 @@
+{
+  "requestId": "b3f1c2a0-7e2a-4b1a-9c3e-1a2b3c4d5e6f",
+  "submittedAt": "2026-07-11T13:00:00Z",
+
+  "system": {
+    "name": "Aga Khan EMR v2.1",
+    "organizationName": "Aga Khan University Hospital",
+    "version": "2.1.0",
+    "certificationPortalSystemId": "sys-00123"
+  },
+
+  "auth": {
+    "type": "BEARER",
+    "token": "eyJhbGci..."
+  },
+
+  "patientId": "12345",
+
+  "testScenarios": [
+    {
+      "scenarioKey": "PATIENT_SUMMARY",
+      "testCases": [
+        { "resourceType": "Patient",             "endpoint": "https://emr.agakhan.co.ke/fhir/patDemo",     "testType": "READ"  },
+        { "resourceType": "AllergyIntolerance",  "endpoint": "https://emr.agakhan.co.ke/fhir/allergies",   "testType": "READ"  },
+        { "resourceType": "Condition",           "endpoint": "https://emr.agakhan.co.ke/fhir/conditions",  "testType": "READ"  },
+        { "resourceType": "MedicationStatement", "endpoint": "https://emr.agakhan.co.ke/fhir/medications", "testType": "READ"  },
+        { "resourceType": "Observation",         "endpoint": "https://emr.agakhan.co.ke/fhir/obs",         "testType": "WRITE" },
+        { "resourceType": "Immunization",        "endpoint": "https://emr.agakhan.co.ke/fhir/imms",        "testType": "READ"  },
+        { "resourceType": "DiagnosticReport",    "endpoint": "https://emr.agakhan.co.ke/fhir/diagReports",  "testType": "READ"  },
+        { "resourceType": "Patient",             "endpoint": "https://emr.agakhan.co.ke/fhir/patDemo",     "testType": "WRITE" }
+      ]
+    },
+    {
+      "scenarioKey": "ECLAIMS",
+      "testCases": [
+        { "resourceType": "Claim",         "endpoint": "https://emr.agakhan.co.ke/fhir/claims",       "testType": "WRITE" },
+        { "resourceType": "ClaimResponse", "endpoint": "https://emr.agakhan.co.ke/fhir/claimResponses", "testType": "READ"  },
+        { "resourceType": "Coverage",      "endpoint": "https://emr.agakhan.co.ke/fhir/coverage",      "testType": "READ"  },
+        { "resourceType": "Organization",  "endpoint": "https://emr.agakhan.co.ke/fhir/orgs",          "testType": "READ"  },
+        { "resourceType": "Practitioner",  "endpoint": "https://emr.agakhan.co.ke/fhir/practitioners", "testType": "READ"  }
+      ]
+    }
+  ]
+}

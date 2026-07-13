@@ -2,6 +2,7 @@ volumes:
    gitb-repo:
    gitb-dbdata:
    itbKenyaHapi:
+   broker-db-data:
 
 services:
 
@@ -42,8 +43,8 @@ services:
       image: isaitb/gitb-ui
       container_name: itb-ui
       restart: unless-stopped
-      ports:
-        - "9000:9000"
+      expose:
+        - "9000"
       environment:
         - THEME=ec
         - AUTOMATION_ENABLED=true
@@ -64,6 +65,21 @@ services:
         gitb-srv:
           condition: service_started
 
+   # Fronts gitb-ui on the host-facing port 9000 and strips its vendor footer
+   # links (User guide / REST API / Find out more / version) via sub_filter —
+   # those are compiled into gitb-ui's own template, no config switch exists.
+   gitb-ui-proxy:
+      image: nginx:alpine
+      container_name: itb-ui-proxy
+      restart: unless-stopped
+      ports:
+        - "9000:80"
+      volumes:
+        - ./nginx/gitb-ui-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+      depends_on:
+        gitb-ui:
+          condition: service_started
+
 
    # ---------------------------
    # HAPI FHIR SERVER
@@ -82,3 +98,54 @@ services:
         - hapi.fhir.allow_external_references=true
         - hapi.fhir.allow_multiple_delete=true
         - hapi.fhir.reuse_cached_search_results_millis=60000
+
+
+   # ---------------------------
+   # ITB AUTOMATION BROKER
+   # ---------------------------
+
+   broker-db:
+      image: postgres:15-alpine
+      container_name: itb-broker-db
+      restart: unless-stopped
+      environment:
+        POSTGRES_DB: broker_db
+        POSTGRES_USER: broker
+        POSTGRES_PASSWORD: ${BROKER_DB_PASSWORD:-brokerpass}
+      volumes:
+        - broker-db-data:/var/lib/postgresql/data
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U broker -d broker_db"]
+        interval: 5s
+        retries: 20
+
+   broker-api:
+      build:
+        context: ./itb-broker/backend
+        dockerfile: Dockerfile
+      container_name: itb-broker-api
+      restart: unless-stopped
+      environment:
+        - DB_USERNAME=${BROKER_DB_USERNAME:-broker}
+        - DB_PASSWORD=${BROKER_DB_PASSWORD:-brokerpass}
+        - ITB_BASE_URL=${ITB_BASE_URL:-http://itb-srv:8080}
+        - PORTAL_BASE_URL=${PORTAL_BASE_URL:-https://certification.dha.go.ke}
+        - PORTAL_API_KEY=${PORTAL_API_KEY:-}
+      ports:
+        - "8090:8090"
+      depends_on:
+        broker-db:
+          condition: service_healthy
+      volumes:
+        - ./itb-broker/certificates:/app/certificates
+
+   broker-frontend:
+      build:
+        context: ./itb-broker/frontend
+        dockerfile: Dockerfile
+      container_name: itb-broker-ui
+      restart: unless-stopped
+      ports:
+        - "3001:80"
+      depends_on:
+        - broker-api
