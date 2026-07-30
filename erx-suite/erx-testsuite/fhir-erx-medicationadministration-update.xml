@@ -33,10 +33,14 @@
             <input name="expression">"$.meta.profile"</input>
         </process>
 
-        <verify id="verifyMetaProfile" desc="Ensure the eRx profile to validate against is declared" handler="ExpressionValidator">
-            <input name="expression">$metaProfileExists</input>
-            <input name="failureMessage">"The submitted MedicationAdministration resource is missing 'meta.profile'. Add a 'meta.profile' entry referencing the Kenya eRx MedicationAdministration profile (e.g. https://nshr-uat.sha.go.ke/fhir/StructureDefinition/ke-erx-medicationadministration) so the Test Bed knows which profile to validate this resource against."</input>
-        </verify>
+        <if desc="Stop and report if the resource does not declare a meta.profile">
+            <cond>not($metaProfileExists)</cond>
+            <then>
+                <assign to="lastStatus">"400 (missing meta.profile - not validated or persisted)"</assign>
+                <assign to="lastBody">"The submitted MedicationAdministration resource is missing 'meta.profile'. Add a 'meta.profile' entry referencing the Kenya eRx MedicationAdministration profile (e.g. https://nshr-uat.sha.go.ke/fhir/StructureDefinition/ke-erx-medicationadministration) so the Test Bed knows which profile to validate this resource against."</assign>
+                <exit success="false" desc="eRx MedicationAdministration is missing meta.profile; resource was not validated or created"/>
+            </then>
+        </if>
 
         <send id="validateMedicationAdministrationAgainstHAPI" desc="Validate submitted MedicationAdministration against eRx profile via $validate before persisting" handler="HttpMessagingV2">
             <input name="uri">"http://hapi-fhir-kenyaitb:8080/fhir/MedicationAdministration/$validate"</input>
