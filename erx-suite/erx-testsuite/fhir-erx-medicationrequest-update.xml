@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testcase id="testCaseErxMedicationRequestUpdate" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+
+    <metadata>
+        <gitb:name>MedicationRequest (eRx)</gitb:name>
+        <gitb:version>1.0</gitb:version>
+        <gitb:description>
+            Validates a submitted MedicationRequest (prescription) resource against the Kenya
+            Electronic Prescription (eRx) Implementation Guide via the FHIR $validate operation before
+            persisting it. If the OperationOutcome reports any error/fatal severity issue, the resource
+            is NOT created and the test case fails with a validation report (severity, FHIR path, code
+            and diagnostics per issue). Warning/information severity issues do not block persistence.
+            Otherwise the client system's MedicationRequest is created (HTTP POST) on the HAPI server.
+        </gitb:description>
+    </metadata>
+
+    <actors>
+        <gitb:actor id="ClientSystem" name="Client System" role="SUT"/>
+        <gitb:actor id="HAPIServer" name="HAPI Server"/>
+    </actors>
+
+    <steps>
+        <assign to="httpHeaders{Content-Type}">"application/json"</assign>
+
+        <receive id="receiveMedicationRequestCreate" desc="Receive new MedicationRequest payload" handler="HttpMessagingV2">
+            <input name="uriExtension">"/MedicationRequest"</input>
+            <input name="method">"POST"</input>
+            <input name="status">200</input>
+            <input name="headers">$httpHeaders</input>
+        </receive>
+
+        <process id="checkMetaProfile" desc="Check whether the resource declares a meta.profile" handler="JsonPathProcessor" operation="exists" output="metaProfileExists">
+            <input name="content">$receiveMedicationRequestCreate{request}{body}</input>
+            <input name="expression">"$.meta.profile"</input>
+        </process>
+
+        <verify id="verifyMetaProfile" desc="Ensure the eRx profile to validate against is declared" handler="ExpressionValidator">
+            <input name="expression">$metaProfileExists</input>
+            <input name="failureMessage">"The submitted MedicationRequest resource is missing 'meta.profile'. Add a 'meta.profile' entry referencing the Kenya eRx MedicationRequest profile (e.g. https://nshr-uat.sha.go.ke/fhir/StructureDefinition/ke-erx-medicationrequest) so the Test Bed knows which profile to validate this resource against."</input>
+        </verify>
+
+        <send id="validateMedicationRequestAgainstHAPI" desc="Validate submitted MedicationRequest against eRx profile via $validate before persisting" handler="HttpMessagingV2">
+            <input name="uri">"http://hapi-fhir-kenyaitb:8080/fhir/MedicationRequest/$validate"</input>
+            <input name="method">"POST"</input>
+            <input name="body">$receiveMedicationRequestCreate{request}{body}</input>
+            <input name="headers">$httpHeaders</input>
+        </send>
+
+        <verify handler="StringValidator" desc="Validate $validate operation responded successfully">
+            <input name="actual">$validateMedicationRequestAgainstHAPI{response}{status}</input>
+            <input name="expected">"200"</input>
+        </verify>
+
+        <process id="countValidationErrors" handler="JsonPathProcessor" operation="count" output="errorCount" desc="Count error/fatal severity issues in the OperationOutcome">
+            <input name="content">$validateMedicationRequestAgainstHAPI{response}{body}</input>
+            <input name="expression">"$.issue[?(@.severity=='error' || @.severity=='fatal')]"</input>
+        </process>
+
+        <if desc="Do not persist the resource if $validate reported any error/fatal issues">
+            <cond>number($errorCount) > 0</cond>
+            <then>
+                <process id="countAllIssues" handler="JsonPathProcessor" operation="count" output="totalIssueCount" desc="Count all OperationOutcome issues, of any severity, to include in the report">
+                    <input name="content">$validateMedicationRequestAgainstHAPI{response}{body}</input>
+                    <input name="expression">"$.issue[*]"</input>
+                </process>
+
+                <assign to="validationReport">"eRx MedicationRequest validation FAILED - resource was NOT persisted. " || $errorCount || " error/fatal issue(s) found:"</assign>
+
+                <foreach counter="i" start="0" end="$totalIssueCount" desc="Append each validation issue to the report">
+                    <do>
+                        <process id="extractIssueSeverity" handler="JsonPathProcessor" operation="process" output="issueSeverity" desc="Extract this issue's severity">
+                            <input name="content">$validateMedicationRequestAgainstHAPI{response}{body}</input>
+                            <input name="expression">"$.issue[" || $i || "].severity"</input>
+                        </process>
+
+                        <process id="extractIssuePath" handler="JsonPathProcessor" operation="process" output="issuePath" desc="Extract this issue's FHIRPath expression">
+                            <input name="content">$validateMedicationRequestAgainstHAPI{response}{body}</input>
+                            <input name="expression">"$.issue[" || $i || "].expression[0]"</input>
+                        </process>
+
+                        <process id="extractIssueCode" handler="JsonPathProcessor" operation="process" output="issueCode" desc="Extract this issue's code">
+                            <input name="content">$validateMedicationRequestAgainstHAPI{response}{body}</input>
+                            <input name="expression">"$.issue[" || $i || "].code"</input>
+                        </process>
+
+                        <process id="extractIssueDiagnostics" handler="JsonPathProcessor" operation="process" output="issueDiagnostics" desc="Extract this issue's diagnostics">
+                            <input name="content">$validateMedicationRequestAgainstHAPI{response}{body}</input>
+                            <input name="expression">"$.issue[" || $i || "].diagnostics"</input>
+                        </process>
+
+                        <assign to="validationReport">$validationReport || " | severity=" || $issueSeverity || "; path=" || $issuePath || "; code=" || $issueCode || "; diagnostics=" || $issueDiagnostics</assign>
+                    </do>
+                </foreach>
+
+                <assign to="lastStatus">"422 (validation failed - not persisted)"</assign>
+                <assign to="lastBody">$validationReport</assign>
+
+                <exit success="false" desc="eRx MedicationRequest failed $validate profile conformance; resource was not created"/>
+            </then>
+        </if>
+
+        <send id="forwardMedicationRequestCreateToHAPI" desc="Forward new MedicationRequest to HAPI server" handler="HttpMessagingV2">
+            <input name="uri">"http://hapi-fhir-kenyaitb:8080/fhir/MedicationRequest"</input>
+            <input name="method">"POST"</input>
+            <input name="body">$receiveMedicationRequestCreate{request}{body}</input>
+            <input name="headers">$httpHeaders</input>
+        </send>
+
+        <assign to="lastStatus">$forwardMedicationRequestCreateToHAPI{response}{status}</assign>
+        <assign to="lastBody">$forwardMedicationRequestCreateToHAPI{response}{body}</assign>
+
+        <verify handler="StringValidator" desc="Validate MedicationRequest was created">
+            <input name="actual">$forwardMedicationRequestCreateToHAPI{response}{status}</input>
+            <input name="expected">"201"</input>
+        </verify>
+
+    </steps>
+
+    <output>
+        <success>
+            <default>"HTTP " || $lastStatus || " - " || $lastBody</default>
+        </success>
+        <failure>
+            <default>"HTTP " || $lastStatus || " - " || $lastBody</default>
+        </failure>
+    </output>
+
+</testcase>
