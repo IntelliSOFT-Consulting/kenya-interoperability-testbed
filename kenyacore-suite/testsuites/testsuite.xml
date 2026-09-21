@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite id="kenyaCoreValidationSuite" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <metadata>
+        <gitb:name>Kenya Core Interoperability Conformance Suite</gitb:name>
+        <gitb:description>A comprehensive validation suite designed to assess structural integrity,
+            semantic correctness, and interoperability compliance of Kenya Core
+            FHIR payloads. The suite forwards submitted resources to a reference HAPI FHIR server
+            for rigorous standards-based validation against national implementation requirements.</gitb:description>
+        <gitb:version>1.0</gitb:version>
+    </metadata>
+    <actors>
+        <gitb:actor id="ClientSystem">
+            <gitb:name>Client System</gitb:name>
+            <gitb:desc>An external clinical or health information system that generates and submits
+                KenyaCore-compliant FHIR resources for validation as part of interoperability testing.</gitb:desc>
+        </gitb:actor>
+        <gitb:actor id="HAPIServer">
+            <gitb:name>Reference Validation Engine (HAPI FHIR Server)</gitb:name>
+            <gitb:desc>A standards-compliant FHIR validation service responsible for evaluating submitted
+                payloads against FHIR specifications, terminology bindings, and Kenya-specific
+                implementation constraints.</gitb:desc>
+        </gitb:actor>
+    </actors>
+    <testcase id="testCaseKenyaCorePatientUpdate"/>
+    <testcase id="testCaseKenyaCoreDetectedIssueUpdate"/>
+    <testcase id="testCaseKenyaCoreMeasureUpdate"/>
+    <testcase id="testCaseKenyaCoreCommunicationRequestUpdate"/>
+    <testcase id="testCaseKenyaCoreObservationUpdate"/>
+    <testcase id="testCaseKenyaCoreMeasureReportUpdate"/>
+    <testcase id="testCaseKenyaCoreTaskUpdate"/>
+    <testcase id="testCaseKenyaCoreQuestionnaireResponseUpdate"/>
+    <testcase id="testCaseKenyaCoreCommunicationUpdate"/>
+    <testcase id="testCaseKenyaCoreEpisodeOfCareUpdate"/>
+    <testcase id="testCaseKenyaCoreRelatedPersonUpdate"/>
+    <testcase id="testCaseKenyaCoreOrganizationUpdate"/>
+    <testcase id="testCaseKenyaCoreConsentUpdate"/>
+    <testcase id="testCaseKenyaCoreLocationUpdate"/>
+    <testcase id="testCaseKenyaCoreDeviceUpdate"/>
+    <testcase id="testCaseKenyaCoreDiagnosticReportUpdate"/>
+    <testcase id="testCaseKenyaCoreEncounterUpdate"/>
+    <testcase id="testCaseKenyaCoreDocumentReferenceUpdate"/>
+    <testcase id="testCaseKenyaCoreProvenanceUpdate"/>
+    <testcase id="testCaseKenyaCoreConditionUpdate"/>
+    <testcase id="testCaseKenyaCorePractitionerRoleUpdate"/>
+    <testcase id="testCaseKenyaCoreAllergyIntoleranceUpdate"/>
+    <testcase id="testCaseKenyaCoreServiceRequestUpdate"/>
+    <testcase id="testCaseKenyaCorePractitionerUpdate"/>
+    <testcase id="testCaseKenyaCoreProcedureUpdate"/>
+
+</testsuite>

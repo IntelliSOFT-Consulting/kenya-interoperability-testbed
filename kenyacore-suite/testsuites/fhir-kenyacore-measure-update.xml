@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testcase id="testCaseBundleUpdate" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+<testcase id="testCaseKenyaCoreMeasureUpdate" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+
     <metadata>
-        <gitb:name>Bundle (KPS)</gitb:name>
+        <gitb:name>Measure (KenyaCore)</gitb:name>
         <gitb:version>1.0</gitb:version>
         <gitb:description>
-            Validates a submitted Bundle resource against the KPS Implementation Guide via the FHIR
+            Validates a submitted Measure resource against the KenyaCore Implementation Guide via the FHIR
             $validate operation before persisting it. If the OperationOutcome reports any error/fatal
             severity issue, the resource is NOT created and the test case fails with a validation
             report (severity, FHIR path, code and diagnostics per issue). Warning/information severity
-            issues do not block persistence. Otherwise the client system's Bundle is created (HTTP
+            issues do not block persistence. Otherwise the client system's Measure is created (HTTP
             POST) on the HAPI server.
         </gitb:description>
     </metadata>
@@ -19,17 +20,17 @@
     </actors>
 
     <steps>
-        <assign to="httpHeaders{Content-Type}">"application/fhir+json"</assign>
+        <assign to="httpHeaders{Content-Type}">"application/json"</assign>
 
-        <receive id="receiveBundleCreate" desc="Receive new Bundle payload" handler="HttpMessagingV2">
-            <input name="uriExtension">"/Bundle"</input>
+        <receive id="receiveMeasureCreate" desc="Receive new Measure payload" handler="HttpMessagingV2">
+            <input name="uriExtension">"/Measure"</input>
             <input name="method">"POST"</input>
             <input name="status">200</input>
             <input name="headers">$httpHeaders</input>
         </receive>
 
         <process id="checkMetaProfile" desc="Check whether the resource declares a meta.profile" handler="JsonPathProcessor" operation="exists" output="metaProfileExists">
-            <input name="content">$receiveBundleCreate{request}{body}</input>
+            <input name="content">$receiveMeasureCreate{request}{body}</input>
             <input name="expression">"$.meta.profile"</input>
         </process>
 
@@ -37,25 +38,25 @@
             <cond>not($metaProfileExists)</cond>
             <then>
                 <assign to="lastStatus">"400 (missing meta.profile - not validated or persisted)"</assign>
-                <assign to="lastBody">"The submitted Bundle resource is missing 'meta.profile'. Add a 'meta.profile' entry referencing the KPS Bundle/IPS profile (e.g. https://nshr-uat.sha.go.ke/fhir/StructureDefinition/ke-kps-bundle) so the Test Bed knows which profile to validate this resource against."</assign>
-                <exit success="false" desc="KPS Bundle is missing meta.profile; resource was not validated or created"/>
+                <assign to="lastBody">"The submitted Measure resource is missing 'meta.profile'. Add a 'meta.profile' entry referencing the KenyaCore Measure profile (e.g. https://fhir.dha.go.ke/ig/core/StructureDefinition/kenya-core-measure|1.0.0) so the Test Bed knows which profile to validate this resource against."</assign>
+                <exit success="false" desc="KenyaCore Measure is missing meta.profile; resource was not validated or created"/>
             </then>
         </if>
 
-        <send id="validateBundleAgainstHAPI" desc="Validate submitted Bundle against KPS profile via $validate before persisting" handler="HttpMessagingV2">
-            <input name="uri">"http://hapi-fhir-kenyaitb:8080/fhir/Bundle/$validate"</input>
+        <send id="validateMeasureAgainstHAPI" desc="Validate submitted Measure against KenyaCore profile via $validate before persisting" handler="HttpMessagingV2">
+            <input name="uri">"http://hapi-fhir-kenyaitb:8080/fhir/Measure/$validate"</input>
             <input name="method">"POST"</input>
-            <input name="body">$receiveBundleCreate{request}{body}</input>
+            <input name="body">$receiveMeasureCreate{request}{body}</input>
             <input name="headers">$httpHeaders</input>
         </send>
 
         <verify handler="StringValidator" desc="Validate $validate operation responded successfully">
-            <input name="actual">$validateBundleAgainstHAPI{response}{status}</input>
+            <input name="actual">$validateMeasureAgainstHAPI{response}{status}</input>
             <input name="expected">"200"</input>
         </verify>
 
         <process id="countValidationErrors" handler="JsonPathProcessor" operation="count" output="errorCount" desc="Count error/fatal severity issues in the OperationOutcome">
-            <input name="content">$validateBundleAgainstHAPI{response}{body}</input>
+            <input name="content">$validateMeasureAgainstHAPI{response}{body}</input>
             <input name="expression">"$.issue[?(@.severity=='error' || @.severity=='fatal')]"</input>
         </process>
 
@@ -63,31 +64,31 @@
             <cond>number($errorCount) > 0</cond>
             <then>
                 <process id="countAllIssues" handler="JsonPathProcessor" operation="count" output="totalIssueCount" desc="Count all OperationOutcome issues, of any severity, to include in the report">
-                    <input name="content">$validateBundleAgainstHAPI{response}{body}</input>
+                    <input name="content">$validateMeasureAgainstHAPI{response}{body}</input>
                     <input name="expression">"$.issue[*]"</input>
                 </process>
 
-                <assign to="validationReport">"KPS Bundle validation FAILED - resource was NOT persisted. " || $errorCount || " error/fatal issue(s) found:"</assign>
+                <assign to="validationReport">"KenyaCore Measure validation FAILED - resource was NOT persisted. " || $errorCount || " error/fatal issue(s) found:"</assign>
 
                 <foreach counter="i" start="0" end="$totalIssueCount" desc="Append each validation issue to the report">
                     <do>
                         <process id="extractIssueSeverity" handler="JsonPathProcessor" operation="process" output="issueSeverity" desc="Extract this issue's severity">
-                            <input name="content">$validateBundleAgainstHAPI{response}{body}</input>
+                            <input name="content">$validateMeasureAgainstHAPI{response}{body}</input>
                             <input name="expression">"$.issue[" || $i || "].severity"</input>
                         </process>
 
                         <process id="extractIssuePath" handler="JsonPathProcessor" operation="process" output="issuePath" desc="Extract this issue's FHIRPath expression">
-                            <input name="content">$validateBundleAgainstHAPI{response}{body}</input>
+                            <input name="content">$validateMeasureAgainstHAPI{response}{body}</input>
                             <input name="expression">"$.issue[" || $i || "].expression[0]"</input>
                         </process>
 
                         <process id="extractIssueCode" handler="JsonPathProcessor" operation="process" output="issueCode" desc="Extract this issue's code">
-                            <input name="content">$validateBundleAgainstHAPI{response}{body}</input>
+                            <input name="content">$validateMeasureAgainstHAPI{response}{body}</input>
                             <input name="expression">"$.issue[" || $i || "].code"</input>
                         </process>
 
                         <process id="extractIssueDiagnostics" handler="JsonPathProcessor" operation="process" output="issueDiagnostics" desc="Extract this issue's diagnostics">
-                            <input name="content">$validateBundleAgainstHAPI{response}{body}</input>
+                            <input name="content">$validateMeasureAgainstHAPI{response}{body}</input>
                             <input name="expression">"$.issue[" || $i || "].diagnostics"</input>
                         </process>
 
@@ -98,22 +99,22 @@
                 <assign to="lastStatus">"422 (validation failed - not persisted)"</assign>
                 <assign to="lastBody">$validationReport</assign>
 
-                <exit success="false" desc="KPS Bundle failed $validate profile conformance; resource was not created"/>
+                <exit success="false" desc="KenyaCore Measure failed $validate profile conformance; resource was not created"/>
             </then>
         </if>
 
-        <send id="forwardBundleCreateToHAPI" desc="Forward new Bundle to HAPI server" handler="HttpMessagingV2">
-            <input name="uri">"http://hapi-fhir-kenyaitb:8080/fhir/Bundle"</input>
+        <send id="forwardMeasureCreateToHAPI" desc="Forward new Measure to HAPI server" handler="HttpMessagingV2">
+            <input name="uri">"http://hapi-fhir-kenyaitb:8080/fhir/Measure"</input>
             <input name="method">"POST"</input>
-            <input name="body">$receiveBundleCreate{request}{body}</input>
+            <input name="body">$receiveMeasureCreate{request}{body}</input>
             <input name="headers">$httpHeaders</input>
         </send>
 
-        <assign to="lastStatus">$forwardBundleCreateToHAPI{response}{status}</assign>
-        <assign to="lastBody">$forwardBundleCreateToHAPI{response}{body}</assign>
+        <assign to="lastStatus">$forwardMeasureCreateToHAPI{response}{status}</assign>
+        <assign to="lastBody">$forwardMeasureCreateToHAPI{response}{body}</assign>
 
-        <verify handler="StringValidator" desc="Validate Bundle was created">
-            <input name="actual">$forwardBundleCreateToHAPI{response}{status}</input>
+        <verify handler="StringValidator" desc="Validate Measure was created">
+            <input name="actual">$forwardMeasureCreateToHAPI{response}{status}</input>
             <input name="expected">"201"</input>
         </verify>
 
@@ -127,4 +128,5 @@
             <default>"HTTP " || $lastStatus || " - " || $lastBody</default>
         </failure>
     </output>
+
 </testcase>

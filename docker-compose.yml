@@ -2,7 +2,6 @@ volumes:
    gitb-repo:
    gitb-dbdata:
    itbKenyaHapi:
-   broker-db-data:
 
 services:
 
@@ -86,8 +85,9 @@ services:
    # ---------------------------
 
    hapi-fhir-kenyaitb:
-      image: hapiproject/hapi:v6.10.0
+      image: hapiproject/hapi:v8.10.0-3
       container_name: hapi-fhir-kenyaitb
+      user: "0:0"
       restart: unless-stopped
       ports:
         - "8086:8080"
@@ -98,54 +98,7 @@ services:
         - hapi.fhir.allow_external_references=true
         - hapi.fhir.allow_multiple_delete=true
         - hapi.fhir.reuse_cached_search_results_millis=60000
-
-
-   # ---------------------------
-   # ITB AUTOMATION BROKER
-   # ---------------------------
-
-   broker-db:
-      image: postgres:15-alpine
-      container_name: itb-broker-db
-      restart: unless-stopped
-      environment:
-        POSTGRES_DB: broker_db
-        POSTGRES_USER: broker
-        POSTGRES_PASSWORD: ${BROKER_DB_PASSWORD:-brokerpass}
-      volumes:
-        - broker-db-data:/var/lib/postgresql/data
-      healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U broker -d broker_db"]
-        interval: 5s
-        retries: 20
-
-   broker-api:
-      build:
-        context: ./itb-broker/backend
-        dockerfile: Dockerfile
-      container_name: itb-broker-api
-      restart: unless-stopped
-      environment:
-        - DB_USERNAME=${BROKER_DB_USERNAME:-broker}
-        - DB_PASSWORD=${BROKER_DB_PASSWORD:-brokerpass}
-        - ITB_BASE_URL=${ITB_BASE_URL:-http://itb-srv:8080}
-        - PORTAL_BASE_URL=${PORTAL_BASE_URL:-https://certification.dha.go.ke}
-        - PORTAL_API_KEY=${PORTAL_API_KEY:-}
-      ports:
-        - "8090:8090"
-      depends_on:
-        broker-db:
-          condition: service_healthy
-      volumes:
-        - ./itb-broker/certificates:/app/certificates
-
-   broker-frontend:
-      build:
-        context: ./itb-broker/frontend
-        dockerfile: Dockerfile
-      container_name: itb-broker-ui
-      restart: unless-stopped
-      ports:
-        - "3001:80"
-      depends_on:
-        - broker-api
+        - spring.datasource.url=jdbc:h2:file:/data/hapi/h2database
+        - spring.datasource.driverClassName=org.h2.Driver
+        - spring.datasource.username=sa
+        - spring.datasource.password=null
