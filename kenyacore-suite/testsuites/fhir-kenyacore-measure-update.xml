@@ -29,13 +29,19 @@
             <input name="headers">$httpHeaders</input>
         </receive>
 
-        <process id="checkMetaProfile" desc="Check whether the resource declares a meta.profile" handler="JsonPathProcessor" operation="exists" output="metaProfileExists">
+        <!-- "count" + recursive descent ("$..profile"), not "exists" on the literal "$.meta.profile"
+             path: the engine's JsonPathProcessor throws PathNotFoundException (crashing the whole
+             session with no report) rather than returning false whenever ANY named segment of a
+             direct path is absent - which "meta" or "meta.profile" often is. Recursive descent is
+             an indefinite/search path that Jayway JsonPath always resolves to a (possibly empty)
+             list instead, so a missing meta/profile no longer aborts the session. -->
+        <process id="checkMetaProfile" desc="Check whether the resource declares a meta.profile" handler="JsonPathProcessor" operation="count" output="metaProfileCount">
             <input name="content">$receiveMeasureCreate{request}{body}</input>
-            <input name="expression">"$.meta.profile"</input>
+            <input name="expression">"$..profile"</input>
         </process>
 
         <if desc="Stop and report if the resource does not declare a meta.profile">
-            <cond>not($metaProfileExists)</cond>
+            <cond>number($metaProfileCount) = 0</cond>
             <then>
                 <assign to="lastStatus">"400 (missing meta.profile - not validated or persisted)"</assign>
                 <assign to="lastBody">"The submitted Measure resource is missing 'meta.profile'. Add a 'meta.profile' entry referencing the KenyaCore Measure profile (e.g. https://fhir.dha.go.ke/ig/core/StructureDefinition/kenya-core-measure|1.0.0) so the Test Bed knows which profile to validate this resource against."</assign>
@@ -70,31 +76,75 @@
 
                 <assign to="validationReport">"KenyaCore Measure validation FAILED - resource was NOT persisted. " || $errorCount || " error/fatal issue(s) found:"</assign>
 
+                <!-- output_message on the Test Bed's session record is a 64KB TEXT column. $validate
+                     can return a very large number of issues (e.g. incomplete terminology on the
+                     validation server), and this loop used to append every one of them with no limit -
+                     once the assembled report passed 64KB, saving the finished session's result threw
+                     a MySQL "Data too long" error, and the report was never persisted or downloadable.
+                     Capping detail to the first 30 issues, and each issue's diagnostics to 300 characters,
+                     keeps the worst case (30 * ~450 chars) safely under that limit. -->
                 <foreach counter="i" start="0" end="$totalIssueCount" desc="Append each validation issue to the report">
                     <do>
+                      <if desc="Only include full detail for the first 30 issues, to keep the report within the Test Bed's storage limit">
+                        <cond>number($i) &lt; 30</cond>
+                        <then>
                         <process id="extractIssueSeverity" handler="JsonPathProcessor" operation="process" output="issueSeverity" desc="Extract this issue's severity">
                             <input name="content">$validateMeasureAgainstHAPI{response}{body}</input>
                             <input name="expression">"$.issue[" || $i || "].severity"</input>
                         </process>
 
-                        <process id="extractIssuePath" handler="JsonPathProcessor" operation="process" output="issuePath" desc="Extract this issue's FHIRPath expression">
+                        <!-- expression and diagnostics are optional (0..1/0..*) on OperationOutcome.issue,
+                             unlike severity and code (1..1), so a direct "process" read of either can hit
+                             the same missing-path crash as meta.profile above. Default first, then only
+                             attempt the direct read - itself now safe - once a recursive-descent "count"
+                             has confirmed the field is actually there. -->
+                        <assign to="issuePath">"(none)"</assign>
+                        <process id="checkIssueHasExpression" handler="JsonPathProcessor" operation="count" output="issueHasExpression" desc="Check whether this issue includes a FHIRPath expression">
                             <input name="content">$validateMeasureAgainstHAPI{response}{body}</input>
-                            <input name="expression">"$.issue[" || $i || "].expression[0]"</input>
+                            <input name="expression">"$.issue[" || $i || "]..expression"</input>
                         </process>
+                        <if desc="Only extract the expression if this issue actually has one">
+                            <cond>number($issueHasExpression) > 0</cond>
+                            <then>
+                                <process id="extractIssuePath" handler="JsonPathProcessor" operation="process" output="issuePath" desc="Extract this issue's FHIRPath expression">
+                                    <input name="content">$validateMeasureAgainstHAPI{response}{body}</input>
+                                    <input name="expression">"$.issue[" || $i || "].expression[0]"</input>
+                                </process>
+                            </then>
+                        </if>
 
                         <process id="extractIssueCode" handler="JsonPathProcessor" operation="process" output="issueCode" desc="Extract this issue's code">
                             <input name="content">$validateMeasureAgainstHAPI{response}{body}</input>
                             <input name="expression">"$.issue[" || $i || "].code"</input>
                         </process>
 
-                        <process id="extractIssueDiagnostics" handler="JsonPathProcessor" operation="process" output="issueDiagnostics" desc="Extract this issue's diagnostics">
+                        <assign to="issueDiagnostics">"(none)"</assign>
+                        <process id="checkIssueHasDiagnostics" handler="JsonPathProcessor" operation="count" output="issueHasDiagnostics" desc="Check whether this issue includes diagnostics text">
                             <input name="content">$validateMeasureAgainstHAPI{response}{body}</input>
-                            <input name="expression">"$.issue[" || $i || "].diagnostics"</input>
+                            <input name="expression">"$.issue[" || $i || "]..diagnostics"</input>
                         </process>
+                        <if desc="Only extract diagnostics if this issue actually has them">
+                            <cond>number($issueHasDiagnostics) > 0</cond>
+                            <then>
+                                <process id="extractIssueDiagnostics" handler="JsonPathProcessor" operation="process" output="issueDiagnostics" desc="Extract this issue's diagnostics">
+                                    <input name="content">$validateMeasureAgainstHAPI{response}{body}</input>
+                                    <input name="expression">"$.issue[" || $i || "].diagnostics"</input>
+                                </process>
+                            </then>
+                        </if>
 
-                        <assign to="validationReport">$validationReport || " | severity=" || $issueSeverity || "; path=" || $issuePath || "; code=" || $issueCode || "; diagnostics=" || $issueDiagnostics</assign>
+                        <assign to="validationReport">$validationReport || " | severity=" || $issueSeverity || "; path=" || $issuePath || "; code=" || $issueCode || "; diagnostics=" || substring($issueDiagnostics, 1, 300)</assign>
+                        </then>
+                      </if>
                     </do>
                 </foreach>
+
+                <if desc="Note how many issues were left out of the report once the 30-issue detail cap is exceeded">
+                    <cond>number($totalIssueCount) &gt; 30</cond>
+                    <then>
+                        <assign to="validationReport">$validationReport || " | (" || (number($totalIssueCount) - 30) || " further issue(s) omitted - report truncated to stay within the Test Bed's report size limit)"</assign>
+                    </then>
+                </if>
 
                 <assign to="lastStatus">"422 (validation failed - not persisted)"</assign>
                 <assign to="lastBody">$validationReport</assign>
