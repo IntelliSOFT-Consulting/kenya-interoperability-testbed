@@ -113,8 +113,8 @@ The mock contains no conformance logic, so nothing is lost when UAT replaces it.
 
 | Property | Kind | Required | Editable by vendor | In tests | Used for |
 |---|---|---|---|---|---|
-| `dhaClientId` | Simple | Yes | No | Yes | Expected `client_id` from this EMR |
-| `dhaClientSecret` | Secret | Yes | No | Yes | Expected `client_secret`; hidden in reports |
+| `hieClientId` | Simple | Yes | No | Yes | Expected `client_id` from this EMR |
+| `hieClientSecret` | Secret | Yes | No | Yes | Expected `client_secret`; hidden in reports |
 | `labGatewayBaseUrl` | Simple | No | No | Yes | This vendor's clean base URL, e.g. `https://acme-emr.lab-itb.example.org` |
 
 - The admin issues the credentials for each vendor system and sends them to the vendor out-of-band. This mirrors DHA, which issues credentials per app.
@@ -145,7 +145,7 @@ Every case runs with `supportsParallelExecution="false"`, because the receive UR
 
 - **`checkTokenRequest`**
   - The method is POST.
-  - `client_id` and `client_secret` are present and equal to `$SYSTEM{dhaClientId}` and `$SYSTEM{dhaClientSecret}`.
+  - `client_id` and `client_secret` are present and equal to `$SYSTEM{hieClientId}` and `$SYSTEM{hieClientSecret}`.
   - The content type is form-urlencoded. A JSON body with the right fields is a **warning**, not an error, because the docs contradict each other.
 
 - **`checkBearer`**
@@ -287,7 +287,7 @@ https://acme-emr.lab-itb.example.org/tenants/token
 **Onboarding a vendor** (README checklist):
 
 1. Create the organisation and system in gitb-ui, and note the system API key.
-2. Set the system properties `dhaClientId`, `dhaClientSecret` and `labGatewayBaseUrl = https://<alias>.<LAB_GATEWAY_DOMAIN>`.
+2. Set the system properties `hieClientId`, `hieClientSecret` and `labGatewayBaseUrl = https://<alias>.<LAB_GATEWAY_DOMAIN>`.
 3. Add `<alias>.<LAB_GATEWAY_DOMAIN> <API key>;` to `nginx/lab-vendors.map`. Optionally add the vendor's egress IP to the allowlist.
 4. Run `docker compose exec lab-gateway nginx -s reload`.
 5. Send the vendor the base URL and credentials out-of-band.
@@ -311,7 +311,7 @@ This is documented only and is not for ongoing use.
 
 ## 8. Moving to local UAT (future, configuration only)
 
-1. Set `hieBaseUrl` to the local UAT base URL. Set each system's `dhaClientId` and `dhaClientSecret` to the UAT-issued credentials.
+1. Set `hieBaseUrl` to the local UAT base URL. Set each system's `hieClientId` and `hieClientSecret` to the UAT-issued credentials.
 2. Replace the identities in `resources/fixtures.json` with UAT test identities, then repackage and upload the suite.
 3. Confirm the two assumed shapes (401 and 404) against UAT. Correct the mock if they differ.
 
