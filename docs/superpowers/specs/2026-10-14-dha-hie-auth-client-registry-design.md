@@ -62,25 +62,25 @@ All hosts are written using their **network aliases** (section 3.3). These are t
 
 ```text
                          docker network (compose, default)
-                         ┌──────────────────────────────────────────────────────────────────────────┐
-EMR (SUT) ──HTTP(S)──►   │ lab-gateway (nginx)                                                        │
- local or vendor-hosted  │   maps https://<vendor>.<LAB_GATEWAY_DOMAIN>/…                             │
- HIE base URL =          │   → /itbsrv/api/http/<apiKey>/…                                            │
- https://<vendor>.       │        │                                                                   │
-  <LAB_GATEWAY_DOMAIN>   │        ▼                                                                   │
- (or raw:                │ lab-service :8080  HttpMessagingV2 receive                                 │
-  <gateway>/itbsrv/      │   validates the request, relays the upstream response    ──forward──►     │
-  api/http/<apiKey>)     │        │                                                  mock-hie :8080   │
-                         │        │  upstream = $DOMAIN{hieBaseUrl}                  (WireMock)       │
-                         │        │  now:   http://mock-hie:8080/uat-middleware/api/v1                 │
-                         │        │  later: local UAT base URL                                         │
-                         │        ▼                                                                   │
-Tester (browser) ──────► │ lab-ui-proxy (nginx) ──► lab-ui :9000  reports, interact prompts           │
-                         │                            ├─► lab-db (MySQL)                              │
-                         │                            └─► lab-cache (Redis)                           │
-                         │ lab-fhir (HAPI FHIR): existing FHIR suites only, not used here             │
-                         └──────────────────────────────────────────────────────────────────────────┘
+                         ┌───────────────────────────────────────────────────────────────────────────┐
+EMR (SUT) ──HTTP(S)──►   │ lab-gateway (nginx)                                                       │
+ local or vendor-hosted  │   <vendor> host → /itbsrv/api/http/<apiKey>/…                             │
+ HIE base URL =          │        │                                                                  │
+  https://<vendor>.      │        ▼                                                                  │
+    <LAB_GATEWAY_DOMAIN> │ lab-service :8080   HttpMessagingV2 receive                               │
+  (or raw <gateway>/     │   validates request ──forward──► mock-hie :8080 (WireMock)                │
+   itbsrv/api/http/<key>)│   relays upstream      upstream = $DOMAIN{hieBaseUrl}                     │
+                         │   response to EMR      now:   http://mock-hie:8080/uat-middleware/api/v1  │
+                         │        ▲               later: local UAT base URL                          │
+                         │        │ lab-ui starts and drives sessions on lab-service                 │
+                         │        │                                                                  │
+Tester (browser) ─────►  │ lab-ui-proxy (nginx) ──► lab-ui :9000  reports, interact prompts          │
+                         │                          uses lab-db (MySQL), lab-cache (Redis)           │
+                         │                                                                           │
+                         │ lab-fhir (HAPI FHIR): existing FHIR suites only                           │
+                         └───────────────────────────────────────────────────────────────────────────┘
 ```
+
 The EMR always initiates the calls; ITB never calls the EMR. An EMR anywhere, including one hosted by a vendor, therefore only needs outbound HTTPS to the gateway. The vendor's network needs no inbound access.
 
 **Division of responsibility**
