@@ -5,8 +5,11 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="${FAKE_EMR_ENV:-$ROOT/scripts/.fake-emr.env}"
+# Values given on the command line win over the env file.
+_cli_emr_base_url="${EMR_BASE_URL:-}"
 # shellcheck disable=SC1090
 [ -f "$ENV_FILE" ] && . "$ENV_FILE"
+EMR_BASE_URL="${_cli_emr_base_url:-${EMR_BASE_URL:-}}"
 
 MOCK_URL="${MOCK_URL:-http://localhost:8095/uat-middleware/api/v1}"
 GATEWAY_URL="${GATEWAY_URL:-http://localhost:9010}"

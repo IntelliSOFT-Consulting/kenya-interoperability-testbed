@@ -66,6 +66,29 @@ UAT-issued ones. Replace the identities in `resources/fixtures.json` with UAT
 test identities, then repackage and upload. No test-case XML changes are needed.
 Confirm the assumed 401/404 shapes against UAT.
 
+## Onboarding an externally hosted (vendor) EMR
+
+Vendors only need outbound HTTPS to the lab gateway; the lab never calls the EMR.
+
+1. In the lab UI, create the vendor's organisation and system and note the system API key.
+2. Set the system properties `hieClientId`, `hieClientSecret` and
+   `labGatewayBaseUrl = https://<vendor>.<LAB_GATEWAY_DOMAIN>`.
+3. Add `<vendor>.<LAB_GATEWAY_DOMAIN> <system API key>;` to `nginx/lab/lab-vendors.map`.
+   Optionally add the vendor's egress IP to `nginx/lab/lab-allowlist.conf`
+   (`allow <ip>;` lines, then `deny all;`).
+4. `docker compose exec lab-gateway nginx -s reload`
+5. Send the vendor the base URL and credentials out-of-band.
+
+The vendor tester logs into the lab UI under their organisation and runs the
+test cases while operating their EMR. Alternatively, an administrator runs the
+sessions on a call with the vendor.
+
+**Revoking a vendor:** remove their map line and reload nginx. If the API key
+leaked, also regenerate the system API key in the lab UI.
+
+**Local testing of vendor hosts:** `*.lab.localhost` names resolve to loopback, e.g.
+`http://test-vendor.lab.localhost:9010`.
+
 ## Public deployment
 
 1. DNS: a wildcard record `*.<LAB_GATEWAY_DOMAIN>` and a record for `<ITB_UI_HOST>`,
