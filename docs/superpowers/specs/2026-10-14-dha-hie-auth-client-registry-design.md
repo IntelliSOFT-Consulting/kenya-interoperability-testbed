@@ -58,18 +58,29 @@ UAT base URL: `https://ilm-dev.dha.go.ke/uat-middleware/api/v1`
 
 ## 3. Architecture
 
-```
-                                            docker network (compose)
-EMR (SUT) ──HTTP(S)──► lab-gateway (nginx) ──► gitb-srv  HttpMessagingV2 receive ──forward──► mock-hie (WireMock)
-  (local or vendor-     maps a clean vendor        validates the request                    /uat-middleware/api/v1/...
-   hosted)              base URL to                relays the upstream response to the EMR
-  HIE base URL =        /itbsrv/api/http/<apiKey>  reports results in gitb-ui
-  https://<alias>.<LAB_GATEWAY_DOMAIN>                   │
-  (or raw: <gateway>/itbsrv/api/http/<apiKey>)           └─ upstream = $DOMAIN{hieBaseUrl}
-                                                            now:   http://mock-hie:8080/uat-middleware/api/v1
-                                                            later: local UAT base URL
-```
+All hosts are written using their **network aliases** (section 3.3). These are the names containers use to reach each other on the compose network.
 
+```text
+                         docker network (compose, default)
+                         ┌──────────────────────────────────────────────────────────────────────────┐
+EMR (SUT) ──HTTP(S)──►   │ lab-gateway (nginx)                                                        │
+ local or vendor-hosted  │   maps https://<vendor>.<LAB_GATEWAY_DOMAIN>/…                             │
+ HIE base URL =          │   → /itbsrv/api/http/<apiKey>/…                                            │
+ https://<vendor>.       │        │                                                                   │
+  <LAB_GATEWAY_DOMAIN>   │        ▼                                                                   │
+ (or raw:                │ lab-service :8080  HttpMessagingV2 receive                                 │
+  <gateway>/itbsrv/      │   validates the request, relays the upstream response    ──forward──►     │
+  api/http/<apiKey>)     │        │                                                  mock-hie :8080   │
+                         │        │  upstream = $DOMAIN{hieBaseUrl}                  (WireMock)       │
+                         │        │  now:   http://mock-hie:8080/uat-middleware/api/v1                 │
+                         │        │  later: local UAT base URL                                         │
+                         │        ▼                                                                   │
+Tester (browser) ──────► │ lab-ui-proxy (nginx) ──► lab-ui :9000  reports, interact prompts           │
+                         │                            ├─► lab-db (MySQL)                              │
+                         │                            └─► lab-cache (Redis)                           │
+                         │ lab-fhir (HAPI FHIR): existing FHIR suites only, not used here             │
+                         └──────────────────────────────────────────────────────────────────────────┘
+```
 The EMR always initiates the calls; ITB never calls the EMR. An EMR anywhere, including one hosted by a vendor, therefore only needs outbound HTTPS to the gateway. The vendor's network needs no inbound access.
 
 **Division of responsibility**
@@ -91,11 +102,12 @@ The mock contains no conformance logic, so nothing is lost when UAT replaces it.
 | `mock-hie/mappings/*.json` | WireMock stubs. |
 | `mock-hie/__files/**` | Fixture response bodies. |
 | `docker-compose.yml` | New `mock-hie` service: `wiremock/wiremock:3.9.1` image, mounts `mock-hie/`, internal URL `http://mock-hie:8080`, host port `8095`. New `lab-gateway` service: `nginx:1.27-alpine` image, host port `9010` (HTTP, local). |
-| `docker-compose.public.yml` | Override for internet-facing deployment (section 7): TLS on 443 for the gateway and gitb-ui, `CALLBACK_ROOT_URL` set to the public host, and `ports: !reset []` on `gitb-srv` and `mock-hie` so they are not published on the host. Requires Docker Compose ≥ 2.24. |
+| `docker-compose.public.yml` | Override for internet-facing deployment (section 7): TLS on 443 for the gateway and lab UI, `CALLBACK_ROOT_URL` set to the public host, and `ports: !reset []` on the `gitb-srv` (lab-service) and `mock-hie` services so they are not published on the host. Requires Docker Compose ≥ 2.24. |
 | `nginx/lab-gateway.conf` | Gateway config: vendor host → API key mapping, the raw receive path, rate limiting, and 404 for everything else (section 7.2). |
 | `nginx/lab-gateway-tls.conf` | TLS server blocks, used only by the public override. |
 | `nginx/lab-vendors.map.example` | Committed example of the vendor host → API key map. The real `nginx/lab-vendors.map` is gitignored. |
 | `nginx/lab-allowlist.conf.example` | Optional IP allowlist example. The real `nginx/lab-allowlist.conf` is gitignored, and an empty file means allow all. |
+| `docker-compose.yml` (existing services) | Add network aliases to the existing services, keeping their service names (section 3.3). |
 | `.gitignore` | Add `nginx/lab-vendors.map`, `nginx/lab-allowlist.conf`, `nginx/certs/`. |
 | `scripts/package-suite.sh` | Builds a clean suite zip (no top-level folder, no `__MACOSX`). Usable for the existing suites too. |
 | `scripts/fake-emr.sh` | Simulated EMR used for verification (section 6). |
@@ -126,6 +138,39 @@ The mock contains no conformance logic, so nothing is lost when UAT replaces it.
 |---|---|
 | Set | `$SYSTEM{labGatewayBaseUrl}` |
 | Not set | The raw receive base, `<CALLBACK_ROOT_URL>/itbsrv/api/http/$SYSTEM{apiKey}` |
+
+### 3.3 Service aliases
+
+The existing services keep their compose **service names**. This matters because the GITB images find each other by their default hostnames: gitb-ui expects `gitb-srv`, `gitb-mysql` and `gitb-redis`.
+
+The `lab-*` names are added as Docker **network aliases** on the default network. Every container on the network can resolve both names.
+
+| Service name (compose key) | Network alias | Role |
+|---|---|---|
+| `gitb-srv` | `lab-service` | Test engine; receives EMR calls |
+| `gitb-ui` | `lab-ui` | Web UI and automation API |
+| `gitb-ui-proxy` | `lab-ui-proxy` | nginx in front of the UI |
+| `gitb-mysql` | `lab-db` | UI database |
+| `gitb-redis` | `lab-cache` | UI cache |
+| `hapi-fhir-kenyaitb` | `lab-fhir` | FHIR validator and store for the existing suites |
+| `mock-hie` | (its service name) | Mock HIE upstream |
+| `lab-gateway` | (its service name) | Gateway for EMR traffic |
+
+Example:
+
+```yaml
+gitb-srv:
+  networks:
+    default:
+      aliases:
+        - lab-service
+```
+
+**Rules:**
+
+- **New config uses aliases.** This covers the nginx `proxy_pass` targets and the domain parameter values (`hieBaseUrl`).
+- **Existing config is left unchanged.** The current FHIR suites' hardcoded `http://hapi-fhir-kenyaitb:8080` URLs keep working.
+- **Aliases only affect DNS inside the network.** `docker compose exec/logs` still take the service name, and `docker ps` still shows the existing `container_name` values (`itb-srv`, `itb-ui`, …), which stay as they are.
 
 ## 4. Test cases
 
@@ -236,19 +281,19 @@ There is no real EMR in this repo, so verification uses `scripts/fake-emr.sh` (b
    | `/itbsrv/api/rest/...` through the gateway | 404, because the automation API is not exposed |
    | More than the rate limit | 429 |
 
-If the automation API can't answer `interact` prompts in the deployed ITB version, steps 2, 3 and 5 fall back to a manual run in gitb-ui following the README. The README documents this.
+If the automation API can't answer `interact` prompts in the deployed ITB version, steps 2, 3 and 5 fall back to a manual run in the lab UI following the README. The README documents this.
 
 ## 7. Deployment for externally hosted (vendor) EMRs
 
 ### 7.1 Exposure model
 
-The internet only ever reaches two things: the **lab gateway** and the **gitb-ui** (for vendor testers). Both are served over TLS by `lab-gateway` in the public override.
+The internet only ever reaches two things: the **lab gateway** and the **lab UI** (`lab-ui`, for vendor testers). Both are served over TLS by `lab-gateway` in the public override.
 
 | Component | Local (`docker-compose.yml`) | Public (`+ docker-compose.public.yml`) |
 |---|---|---|
 | `lab-gateway` | HTTP on `:9010` | HTTPS on `:443` for `*.<LAB_GATEWAY_DOMAIN>` and `<ITB_UI_HOST>` |
-| `gitb-ui-proxy` | HTTP on `:9000` | Not published. Reached via `lab-gateway`, which serves `https://<ITB_UI_HOST>` and proxies to it, including WebSockets with a 3600s timeout. |
-| `gitb-srv` | `:8080` | Not published. Internal only: receive paths go through the gateway, and the automation API is not reachable from outside. |
+| `lab-ui-proxy` (`gitb-ui-proxy`) | HTTP on `:9000` | Not published. Reached via `lab-gateway`, which serves `https://<ITB_UI_HOST>` and proxies to it, including WebSockets with a 3600s timeout. |
+| `lab-service` (`gitb-srv`) | `:8080` | Not published. Internal only: receive paths go through the gateway, and the automation API is not reachable from outside. |
 | `mock-hie` | `:8095` | Not published. Internal only. |
 | `CALLBACK_ROOT_URL` | `http://localhost:8080` | `https://<ITB_UI_HOST>` (or the gateway host), so the URLs ITB shows are reachable by vendors |
 
@@ -265,7 +310,7 @@ The internet only ever reaches two things: the **lab gateway** and the **gitb-ui
 ```text
 https://acme-emr.lab-itb.example.org/tenants/token
         └─ Host header ─┘            └─ path + query kept as-is ─┘
-   ──► http://gitb-srv:8080/itbsrv/api/http/<acme API key>/tenants/token
+   ──► http://lab-service:8080/itbsrv/api/http/<acme API key>/tenants/token
 ```
 
 - **`map $host $vendor_api_key { default ""; include /etc/nginx/lab-vendors.map; }`**
@@ -273,10 +318,10 @@ https://acme-emr.lab-itb.example.org/tenants/token
   - Local testing uses `*.lab.localhost` names.
 - **Vendor server block** (`server_name *.<LAB_GATEWAY_DOMAIN> *.lab.localhost`):
   - If `$vendor_api_key` is empty, it returns 404 `{"error":"Not Found","message":"Unknown vendor host"}`.
-  - Otherwise, `location / { proxy_pass http://gitb-srv:8080/itbsrv/api/http/$vendor_api_key$request_uri; }`.
+  - Otherwise, `location / { proxy_pass http://lab-service:8080/itbsrv/api/http/$vendor_api_key$request_uri; }`.
   - `Host`, `X-Forwarded-For` and `X-Forwarded-Proto` are set on the proxied request.
 - **Raw receive path:** the default server block on the gateway also accepts `/itbsrv/api/http/` and proxies it unchanged. This serves EMRs configured with the raw URL, and admins who have not added a map entry yet.
-- **Everything else is denied.** Any other path on the gateway, including `/itbsrv/api/rest/` (the automation API) and gitb-srv's other endpoints, returns 404.
+- **Everything else is denied.** Any other path on the gateway, including `/itbsrv/api/rest/` (the automation API) and lab-service's other endpoints, returns 404.
 - **Rate limiting:** `limit_req_zone $binary_remote_addr zone=lab:10m rate=10r/s` with `burst=20 nodelay`. Excess requests get 429.
 - **Optional IP allowlist:** `include /etc/nginx/lab-allowlist.conf;` holding `allow <vendor egress IP>; ... deny all;`. An empty file means no restriction.
 - **Body and timeouts:**
@@ -286,17 +331,17 @@ https://acme-emr.lab-itb.example.org/tenants/token
 
 **Onboarding a vendor** (README checklist):
 
-1. Create the organisation and system in gitb-ui, and note the system API key.
-2. Set the system properties `hieClientId`, `hieClientSecret` and `labGatewayBaseUrl = https://<alias>.<LAB_GATEWAY_DOMAIN>`.
-3. Add `<alias>.<LAB_GATEWAY_DOMAIN> <API key>;` to `nginx/lab-vendors.map`. Optionally add the vendor's egress IP to the allowlist.
+1. Create the organisation and system in the lab UI, and note the system API key.
+2. Set the system properties `hieClientId`, `hieClientSecret` and `labGatewayBaseUrl = https://<vendor>.<LAB_GATEWAY_DOMAIN>`.
+3. Add `<vendor>.<LAB_GATEWAY_DOMAIN> <API key>;` to `nginx/lab-vendors.map`. Optionally add the vendor's egress IP to the allowlist.
 4. Run `docker compose exec lab-gateway nginx -s reload`.
 5. Send the vendor the base URL and credentials out-of-band.
 
-**Revoking a vendor:** remove the map line and reload nginx. If the key has leaked, also regenerate the system API key in gitb-ui.
+**Revoking a vendor:** remove the map line and reload nginx. If the key has leaked, also regenerate the system API key in the lab UI.
 
 ### 7.3 Running a session with a vendor
 
-- The vendor tester logs into gitb-ui under their own organisation, starts the test case, and performs the EMR actions.
+- The vendor tester logs into the lab UI under their own organisation, starts the test case, and performs the EMR actions.
 - Alternatively, an admin runs the session while the vendor drives the EMR on a call.
 - `receive` steps wait for the EMR's call. The README tells testers to have the EMR ready before starting a case.
 - Fixtures are synthetic only. This is mandatory, because the endpoint is internet-facing.
@@ -331,7 +376,7 @@ No test-case XML changes are needed.
 | Risk / question | Mitigation |
 |---|---|
 | The EMR may not accept a base URL with a path prefix | Solved by the clean base URL mapping (section 7.2). The raw path is kept as an alternative. |
-| `proxy_pass` to a variable URL needs a `resolver` for `gitb-srv` | Use Docker's embedded DNS, `resolver 127.0.0.11 valid=30s`. Verified by the gateway test (section 6, step 5). |
+| `proxy_pass` to a variable URL needs a `resolver` for `lab-service` | Use Docker's embedded DNS, `resolver 127.0.0.11 valid=30s`. Verified by the gateway test (section 6, step 5). |
 | ITB-generated report links and `CALLBACK_ROOT_URL` behind a TLS proxy | Set `CALLBACK_ROOT_URL` to the public host in the override. Verify that a vendor tester sees correct URLs in the UI. |
 | The internet-facing endpoint gets abused | Map-only routing, rate limit, optional IP allowlist, synthetic data only, and the automation API not exposed. |
 | The API key leaks through the raw path | Prefer clean hosts for vendors. Revoke by regenerating the system API key and updating the map. |
