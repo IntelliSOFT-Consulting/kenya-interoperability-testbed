@@ -27,12 +27,9 @@
             <input name="expression">"$.notFound.number"</input>
         </process>
         <interact id="instructions" desc="Instructions" blocking="false">
-            <instruct desc="What to do" level="INFO" forceDisplay="true">"With your EMR's HIE base URL set to " || $base{url} || ", search the Client Registry for the client with " || $expectedType || " " || $expectedNumber || ". No such client exists. Only AUTH-01 answers POST /tenants/token: if your EMR may request a new access token first (expired or per-call tokens), run AUTH-01 immediately before this test."</instruct>
+            <instruct desc="What to do" level="INFO" forceDisplay="true">"With your EMR's HIE base URL set to " || $base{url} || ", search the Client Registry for the client with " || $expectedType || " " || $expectedNumber || ". No such client exists. If your EMR requests a new access token first, that is answered too (token requests are graded by AUTH-01)."</instruct>
         </interact>
-        <call id="lookup" path="scriptlets/receiveAndForward.xml">
-            <input name="uriExtension">'/patients'</input>
-            <input name="method">'GET'</input>
-        </call>
+        <call id="lookup" path="scriptlets/receiveLookup.xml"/>
         <call id="bearerChecks" path="scriptlets/checkBearer.xml">
             <input name="headers">$lookup{headers}</input>
         </call>

@@ -2,9 +2,9 @@
 <scriptlet id="receiveAndForward" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
     <metadata>
         <gitb:name>Receive an EMR call and forward it to the HIE upstream</gitb:name>
-        <gitb:description>Waits for the EMR's call, forwards it unchanged to hieBaseUrl, and
-            replies to the EMR with the upstream status, Content-Type and body. Checks are run by
-            the caller afterwards, so a failing check never blocks the EMR.</gitb:description>
+        <gitb:description>Waits for the EMR's call on uriExtension, forwards it unchanged to
+            hieBaseUrl, and replies to the EMR with the upstream status, Content-Type and body.
+            Checks are run by the caller afterwards, so a failing check never blocks the EMR.</gitb:description>
     </metadata>
     <params>
         <var name="uriExtension" type="string"/>
@@ -20,61 +20,15 @@
             <input name="requestHeadersToHide">"Authorization"</input>
             <result timeout="60000">
                 <steps>
-                    <call id="incoming" path="scriptlets/normaliseRequest.xml" hidden="true">
+                    <call id="forward" path="scriptlets/forwardUpstream.xml">
                         <input name="request">$emrCall{request}</input>
+                        <input name="hideRequestBody">$hideRequestBody</input>
                     </call>
-                    <assign to="upstreamUri" type="string">$DOMAIN{hieBaseUrl} || $uriExtension || (if ($incoming{queryString} = '') then '' else '?' || $incoming{queryString})</assign>
-                    <assign to="upstreamHeaders{Accept}" type="string">'application/json'</assign>
-                    <if desc="Forward Authorization" hidden="true">
-                        <cond>$incoming{headers}{Authorization} != ''</cond>
-                        <then><assign to="upstreamHeaders{Authorization}" type="string">$incoming{headers}{Authorization}</assign></then>
-                    </if>
-                    <if desc="Forward Content-Type" hidden="true">
-                        <cond>$incoming{headers}{Content-Type} != ''</cond>
-                        <then><assign to="upstreamHeaders{Content-Type}" type="string">$incoming{headers}{Content-Type}</assign></then>
-                    </if>
-                    <if desc="Forward X-Facility-Id" hidden="true">
-                        <cond>$incoming{headers}{X-Facility-Id} != ''</cond>
-                        <then><assign to="upstreamHeaders{X-Facility-Id}" type="string">$incoming{headers}{X-Facility-Id}</assign></then>
-                    </if>
-                    <if desc="Forward X-Facility-Id-Type" hidden="true">
-                        <cond>$incoming{headers}{X-Facility-Id-Type} != ''</cond>
-                        <then><assign to="upstreamHeaders{X-Facility-Id-Type}" type="string">$incoming{headers}{X-Facility-Id-Type}</assign></then>
-                    </if>
-                    <if desc="Forward to the HIE upstream">
-                        <cond>$method = 'POST'</cond>
-                        <then>
-                            <send id="upstreamPost" desc="Forward to the HIE upstream" handler="HttpMessagingV2">
-                                <input name="uri">$upstreamUri</input>
-                                <input name="method">"POST"</input>
-                                <input name="version">"1.1"</input>
-                                <input name="headers">$upstreamHeaders</input>
-                                <input name="body">$emrCall{request}{body}</input>
-                                <input name="showRequestBody">not($hideRequestBody)</input>
-                                <input name="requestHeadersToHide">"Authorization"</input>
-                            </send>
-                            <assign to="replyStatus">$upstreamPost{response}{status}</assign>
-                            <assign to="replyBody">$upstreamPost{response}{body}</assign>
-                            <assign to="replyContentType" type="string">if ($upstreamPost{response}{headers}{Content-Type} != '') then $upstreamPost{response}{headers}{Content-Type} else $upstreamPost{response}{headers}{content-type}</assign>
-                        </then>
-                        <else>
-                            <send id="upstreamGet" desc="Forward to the HIE upstream" handler="HttpMessagingV2">
-                                <input name="uri">$upstreamUri</input>
-                                <input name="method">$method</input>
-                                <input name="version">"1.1"</input>
-                                <input name="headers">$upstreamHeaders</input>
-                                <input name="requestHeadersToHide">"Authorization"</input>
-                            </send>
-                            <assign to="replyStatus">$upstreamGet{response}{status}</assign>
-                            <assign to="replyBody">$upstreamGet{response}{body}</assign>
-                            <assign to="replyContentType" type="string">if ($upstreamGet{response}{headers}{Content-Type} != '') then $upstreamGet{response}{headers}{Content-Type} else $upstreamGet{response}{headers}{content-type}</assign>
-                        </else>
-                    </if>
-                    <assign to="replyHeaders{Content-Type}" type="string">if ($replyContentType != '') then $replyContentType else 'application/json'</assign>
+                    <assign to="replyHeaders{Content-Type}" type="string">$forward{contentType}</assign>
                 </steps>
-                <output name="status">$replyStatus</output>
+                <output name="status">$forward{status}</output>
                 <output name="headers">$replyHeaders</output>
-                <output name="body">$replyBody</output>
+                <output name="body">$forward{body}</output>
             </result>
         </receive>
         <call id="received" path="scriptlets/normaliseRequest.xml" hidden="true">
@@ -84,6 +38,7 @@
     <output name="request">$emrCall{request}</output>
     <output name="headers">$received{headers}</output>
     <output name="queryString">$received{queryString}</output>
+    <output name="path">$received{path}</output>
     <output name="upstreamStatus">$emrCall{response}{status}</output>
     <output name="upstreamBody">$emrCall{response}{body}</output>
 </scriptlet>

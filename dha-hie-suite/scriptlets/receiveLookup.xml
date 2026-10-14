@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scriptlet id="receiveLookup" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+    <metadata>
+        <gitb:name>Receive a Client Registry lookup, answering token requests first</gitb:name>
+        <gitb:description>Waits for the EMR's GET /patients. EMRs with an expired or per-call
+            token first POST /tenants/token: those calls are forwarded and answered but not graded
+            (AUTH-01 grades token requests), and the wait continues. Any other call, or more than
+            maxTokenCalls token requests, fails the test. Outputs match receiveAndForward.</gitb:description>
+    </metadata>
+    <params>
+        <var name="maxTokenCalls" type="number"><value>5</value></var>
+        <var name="receiveTimeout" type="number"><value>900000</value></var>
+    </params>
+    <steps>
+        <assign to="tokenCalls" type="number">0</assign>
+        <assign to="lookupReceived" type="boolean">false()</assign>
+        <assign to="stopWaiting" type="boolean">false()</assign>
+        <assign to="failureReason" type="string">''</assign>
+        <while desc="Wait for the lookup, answering token requests">
+            <cond>not($lookupReceived) and not($stopWaiting)</cond>
+            <do>
+                <!-- No uriExtension: accept any call for this system and decide by its path. -->
+                <receive id="emrCall" desc="Wait for the EMR to call the HIE" handler="HttpMessagingV2" timeout="$receiveTimeout" timeoutIsError="true">
+                    <input name="showRequestBody">false()</input>
+                    <input name="requestHeadersToHide">"Authorization"</input>
+                    <result timeout="60000">
+                        <steps>
+                            <call id="forward" path="scriptlets/forwardUpstream.xml">
+                                <input name="request">$emrCall{request}</input>
+                                <input name="hideRequestBody">true()</input>
+                            </call>
+                            <assign to="replyHeaders{Content-Type}" type="string">$forward{contentType}</assign>
+                        </steps>
+                        <output name="status">$forward{status}</output>
+                        <output name="headers">$replyHeaders</output>
+                        <output name="body">$forward{body}</output>
+                    </result>
+                </receive>
+                <call id="received" path="scriptlets/normaliseRequest.xml" hidden="true">
+                    <input name="request">$emrCall{request}</input>
+                </call>
+                <assign to="callMethod" type="string">upper-case($emrCall{request}{method})</assign>
+                <if desc="Token request, lookup, or unexpected call">
+                    <cond>$callMethod = 'POST' and $received{path} = '/tenants/token'</cond>
+                    <then>
+                        <assign to="tokenCalls" type="number">number($tokenCalls) + 1</assign>
+                        <log>"Token request " || $tokenCalls || " answered (not graded here; AUTH-01 grades token requests). Waiting for the lookup."</log>
+                        <if desc="Too many token requests" hidden="true">
+                            <cond>number($tokenCalls) &gt; number($maxTokenCalls)</cond>
+                            <then>
+                                <assign to="stopWaiting" type="boolean">true()</assign>
+                                <assign to="failureReason" type="string">"More than " || $maxTokenCalls || " token requests before the lookup (GET /patients)."</assign>
+                            </then>
+                        </if>
+                    </then>
+                    <else>
+                        <if desc="Lookup or unexpected call" hidden="true">
+                            <cond>$received{path} = '/patients'</cond>
+                            <then>
+                                <assign to="lookupReceived" type="boolean">true()</assign>
+                            </then>
+                            <else>
+                                <assign to="stopWaiting" type="boolean">true()</assign>
+                                <assign to="failureReason" type="string">"Unexpected call " || $callMethod || " " || $received{path} || "; this test expects GET /patients, optionally preceded by POST /tenants/token."</assign>
+                            </else>
+                        </if>
+                    </else>
+                </if>
+            </do>
+        </while>
+        <if desc="Stop when no lookup arrived">
+            <cond>not($lookupReceived)</cond>
+            <then>
+                <verify id="lookupArrived" handler="ExpressionValidator" desc="The EMR sent the lookup">
+                    <input name="expression">false()</input>
+                    <input name="failureMessage">$failureReason</input>
+                </verify>
+                <exit desc="No Client Registry lookup to check" success="false"/>
+            </then>
+        </if>
+    </steps>
+    <output name="request">$emrCall{request}</output>
+    <output name="headers">$received{headers}</output>
+    <output name="queryString">$received{queryString}</output>
+    <output name="path">$received{path}</output>
+    <output name="upstreamStatus">$emrCall{response}{status}</output>
+    <output name="upstreamBody">$emrCall{response}{body}</output>
+    <output name="tokenCalls">$tokenCalls</output>
+</scriptlet>

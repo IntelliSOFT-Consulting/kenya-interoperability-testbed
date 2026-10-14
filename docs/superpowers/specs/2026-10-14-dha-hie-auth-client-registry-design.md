@@ -220,7 +220,7 @@ Checks run **after** the reply: the receive's `result` block only forwards upstr
 | **CR-02** Other identifier types | For each of ClientRegistry ID, Birth Certificate, Birth Notification, Alien ID, Refugee ID and Mandate Number, search using the fixture number (one `foreach` iteration per type) | The same checks per iteration, with the matching expected type | All iterations pass; tester confirms display each time |
 | **CR-03** Client not found | Search for National ID `<fixtures.notFound.number>` | The same request checks; upstream returns 404 | No check errors; tester confirms the EMR shows a "not found" message and does not create or display a client |
 
-**Why CR cases do not wait for a token call:** EMRs cache tokens, so waiting for `/tenants/token` in a CR case would hang. CR cases check the Bearer format locally and leave token validity to the upstream:
+**Token requests during CR cases:** EMRs usually cache tokens, but an expired cache or a per-call token means a `POST /tenants/token` can arrive before the lookup. CR cases therefore wait with `receiveLookup`: a receive without `uriExtension` that accepts any call for the system. Token requests are forwarded and answered but not graded, and the wait continues. `GET /patients` ends the wait and is checked. Any other call, or more than 5 token requests, fails the test with a message naming the call. CR cases never *require* a token call. They check the Bearer format locally and leave token validity to the upstream:
 - the mock returns 401 for a missing or malformed Bearer;
 - UAT will check the signature.
 
@@ -403,7 +403,8 @@ No test-case XML changes are needed.
 - **ITB layout:** a dedicated domain `Kenya HIE`, a specification `DHA HIE APIs`, and a community `Kenya HIE community` bound to that domain (the only existing domain was ITB's `Sample domain`). The community allows *Manage test sessions via REST API*, which the automation scripts need.
 - **Interaction prompts:** skipped through the `skipInteractions` input in automated runs (§6).
 - **Receive base URL:** domain parameter `labServiceBaseUrl` (§3.2).
-- **Checks after reply** and helper scriptlets (§4.1).
+- **Checks after reply** and helper scriptlets (§4.1); forwarding is shared in `forwardUpstream`.
+- **Token requests in CR cases** are answered, not graded (`receiveLookup`, §4.2), so EMRs with expired or per-call tokens don't hang a lookup test.
 - **Generated mock fixtures** from `fixtures.json` (§3.1).
 - **Gateway files** under `nginx/lab/`, shared `.inc` snippets, TLS template (§3.1, §7.2).
 - `AUTOMATION_ENABLED` in `docker-compose.yml` is unchanged: the running instance already serves `/api/rest`.

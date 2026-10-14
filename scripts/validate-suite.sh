@@ -13,7 +13,7 @@ done
 
 expected="testSuite.xml scriptlets/normaliseRequest.xml scriptlets/formField.xml scriptlets/emrBaseUrl.xml
 scriptlets/receiveAndForward.xml scriptlets/checkTokenRequest.xml scriptlets/checkBearer.xml
-scriptlets/checkPatientQuery.xml testCases/AUTH-01.xml testCases/CR-01.xml testCases/CR-02.xml testCases/CR-03.xml"
+scriptlets/checkPatientQuery.xml scriptlets/forwardUpstream.xml scriptlets/receiveLookup.xml testCases/AUTH-01.xml testCases/CR-01.xml testCases/CR-02.xml testCases/CR-03.xml"
 missing=0
 for f in $expected; do
   [ -f "$suite/$f" ] || { echo "missing $suite/$f"; missing=1; }

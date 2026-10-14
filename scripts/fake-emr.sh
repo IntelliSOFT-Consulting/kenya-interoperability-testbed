@@ -203,6 +203,34 @@ act_token_json() {
     --data "$(jq -n --arg id "$LAB_CLIENT_ID" --arg s "$LAB_CLIENT_SECRET" '{client_id: $id, client_secret: $s}')"
 }
 act_token_bad_secret()  { form_token "wrong-secret"; }
+fresh_token() { # like an EMR refreshing its token: prints the access_token, or nothing
+  curl -s -X POST "$EMR_BASE_URL/tenants/token" -H 'Content-Type: application/x-www-form-urlencoded' \
+    --data-urlencode "client_id=$LAB_CLIENT_ID" --data-urlencode "client_secret=$LAB_CLIENT_SECRET" \
+    | jq -r '.access_token // empty' 2>/dev/null || true
+}
+act_cr01_token_first() {
+  local tok
+  tok=$(fresh_token)
+  [ -n "$tok" ] || return 0   # a real EMR stops here when it can't get a token
+  sleep 2
+  lookup "$(fx .nationalId.type)" "$(fx .nationalId.number)" -H "Authorization: Bearer $tok"
+}
+act_cr02_token_each() {
+  local n i=0 tok
+  n=$(fx '.alternates | length')
+  while [ "$i" -lt "$n" ]; do
+    tok=$(fresh_token)
+    [ -n "$tok" ] || return 0
+    sleep 2
+    lookup "$(fx ".alternates[$i].type")" "$(fx ".alternates[$i].number")" -H "Authorization: Bearer $tok"
+    sleep 2; i=$((i + 1))
+  done
+}
+act_cr01_unexpected_call() { curl -s -o /dev/null "$EMR_BASE_URL/facilities/search?identifier=x" -H "Authorization: Bearer $TOKEN"; }
+act_cr01_six_tokens() {
+  local i
+  for i in 1 2 3 4 5 6; do form_token "$LAB_CLIENT_SECRET"; sleep 2; done
+}
 act_token_mixed_case_header() {
   curl -s -o /dev/null -X POST "$EMR_BASE_URL/tenants/token" -H 'Content-type: application/x-www-form-urlencoded' \
     --data-urlencode "client_id=$LAB_CLIENT_ID" --data-urlencode "client_secret=$LAB_CLIENT_SECRET"
@@ -242,6 +270,8 @@ mode_itb() {
   run_case "CR-03 lower-case authorization header" SUCCESS "" CR-03 act_cr03_lowercase_auth
   run_case "AUTH-01 mixed-case Content-type header" SUCCESS "" AUTH-01 act_token_mixed_case_header
   run_case "CR-01 mixed-case AUTHORIZATION and X-facility-id" SUCCESS "" CR-01 act_cr01_mixed_case_headers
+  run_case "CR-01 token request before the lookup" SUCCESS "" CR-01 act_cr01_token_first
+  run_case "CR-02 token request before every lookup" SUCCESS "" CR-02 act_cr02_token_each
 }
 
 mode_itb_bad() {
@@ -250,6 +280,8 @@ mode_itb_bad() {
   run_case "CR-01 NATIONAL_ID spelling"  FAILURE "identification_type must be exactly" CR-01 act_cr01_bad_type
   run_case "CR-01 missing Bearer"        FAILURE "Authorization header must carry a Bearer JWT" CR-01 act_cr01_no_bearer
   run_case "CR-01 one facility header"   FAILURE "X-Facility-Id and X-Facility-Id-Type must be sent together" CR-01 act_cr01_one_facility
+  run_case "CR-01 unexpected call"       FAILURE "Unexpected call GET /facilities/search" CR-01 act_cr01_unexpected_call
+  run_case "CR-01 six token requests"    FAILURE "More than 5 token requests before the lookup" CR-01 act_cr01_six_tokens
 }
 
 case "${1:-}" in

@@ -3,7 +3,7 @@
     <metadata>
         <gitb:name>Normalise an incoming EMR request</gitb:name>
         <gitb:description>Returns the headers the checks need under canonical names, accepting
-            lower-cased names too, and the raw query string. The query string comes from the
+            lower-cased names too, the raw query string and the path relative to the HIE base URL. The query string comes from the
             request URI when it has one, otherwise from the X-Lab-Original-Uri header added by
             lab-gateway (the ITB docs don't say whether {request}{uri} keeps the query).</gitb:description>
     </metadata>
@@ -18,7 +18,13 @@
         <assign to="headers{X-Lab-Original-Uri}" type="string">if ($request{headers}{X-Lab-Original-Uri} != '') then $request{headers}{X-Lab-Original-Uri} else $request{headers}{x-lab-original-uri}</assign>
         <assign to="requestUri" type="string">$request{uri}</assign>
         <assign to="queryString" type="string">if (contains($requestUri, '?')) then substring-after($requestUri, '?') else substring-after($headers{X-Lab-Original-Uri}, '?')</assign>
+        <!-- The call's path relative to the HIE base URL, e.g. /patients. Raw receive
+             URLs carry /itbsrv/api/http/<system API key> in front; vendor hosts don't. -->
+        <assign to="fullUri" type="string">if ($headers{X-Lab-Original-Uri} != '') then $headers{X-Lab-Original-Uri} else $requestUri</assign>
+        <assign to="fullPath" type="string">if (contains($fullUri, '?')) then substring-before($fullUri, '?') else $fullUri</assign>
+        <assign to="path" type="string">if (contains($fullPath, '/itbsrv/api/http/')) then '/' || substring-after(substring-after($fullPath, '/itbsrv/api/http/'), '/') else $fullPath</assign>
     </steps>
     <output name="headers"/>
     <output name="queryString"/>
+    <output name="path"/>
 </scriptlet>
