@@ -2,3 +2,4 @@
 .DS_Store
 nginx/lab/
 .cache/
+scripts/.fake-emr.env
