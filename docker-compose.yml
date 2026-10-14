@@ -9,10 +9,17 @@ services:
    # GITB SERVICES
    # ---------------------------
 
+   # Every service also answers to a lab-* network alias (e.g. gitb-srv ->
+   # lab-service). New config refers to services by alias; service names stay
+   # because the GITB images find each other by their default hostnames.
    gitb-redis:
       image: isaitb/gitb-redis
       container_name: itb-redis
       restart: unless-stopped
+      networks:
+        default:
+          aliases:
+            - lab-cache
 
    gitb-mysql:
       image: isaitb/gitb-mysql
@@ -27,6 +34,10 @@ services:
         test: "/usr/bin/mysql --user=root --password=$$MYSQL_ROOT_PASSWORD --execute \"SHOW DATABASES;\""
         interval: 3s
         retries: 50
+      networks:
+        default:
+          aliases:
+            - lab-db
 
    gitb-srv:
       image: isaitb/gitb-srv
@@ -37,6 +48,10 @@ services:
         - HMAC_KEY=${HMAC_KEY}
       ports:
         - "8080:8080"
+      networks:
+        default:
+          aliases:
+            - lab-service
 
    gitb-ui:
       image: isaitb/gitb-ui
@@ -63,6 +78,10 @@ services:
           condition: service_healthy
         gitb-srv:
           condition: service_started
+      networks:
+        default:
+          aliases:
+            - lab-ui
 
    # Fronts gitb-ui on the host-facing port 9000 and strips its vendor footer
    # links (User guide / REST API / Find out more / version) via sub_filter —
@@ -78,6 +97,10 @@ services:
       depends_on:
         gitb-ui:
           condition: service_started
+      networks:
+        default:
+          aliases:
+            - lab-ui-proxy
 
 
    # ---------------------------
@@ -102,6 +125,10 @@ services:
         - spring.datasource.driverClassName=org.h2.Driver
         - spring.datasource.username=sa
         - spring.datasource.password=null
+      networks:
+        default:
+          aliases:
+            - lab-fhir
 
    # ---------------------------
    # MOCK HIE (DHA AfyaConnect middleware stand-in)
