@@ -100,8 +100,8 @@ leaked, also regenerate the system API key in the lab UI.
 4. `docker compose -f docker-compose.yml -f docker-compose.public.yml up -d`
 5. Set the domain parameter `labServiceBaseUrl = https://<ITB_UI_HOST>/itbsrv/api/http`.
 
-Only port 443 is published. The ITB engine, the automation API, mock-hie and the
-UI proxy are internal. Use synthetic fixtures only, because the endpoint is
+Only port 443 is published. The ITB engine, the automation API (`/api/rest`,
+blocked on the public UI host), mock-hie, HAPI FHIR and the UI proxy are internal. Use synthetic fixtures only, because the endpoint is
 internet-facing.
 
 **Temporary sharing without a public host:** expose only `lab-gateway:9010`

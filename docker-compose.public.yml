@@ -22,6 +22,10 @@ services:
    mock-hie:
       ports: !reset []
 
+   # The existing FHIR suites reach HAPI in-network (hapi-fhir-kenyaitb / lab-fhir).
+   hapi-fhir-kenyaitb:
+      ports: !reset []
+
    lab-gateway:
       ports: !override
         - "443:443"

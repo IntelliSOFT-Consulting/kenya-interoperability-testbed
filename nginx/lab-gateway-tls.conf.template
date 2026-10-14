@@ -34,6 +34,13 @@ server {
 
     include /etc/nginx/snippets/lab-gateway-receive.inc;
 
+    # The ITB automation REST API (gitb-ui /api/rest) stays internal; scripts use
+    # it on the host (localhost:9000), never through the public UI host.
+    location /api/rest/ {
+        default_type application/json;
+        return 404 '{"error":"Not Found","message":"Unknown path"}';
+    }
+
     location / {
         set $lab_ui_proxy lab-ui-proxy:80;
         proxy_set_header Host $host;
