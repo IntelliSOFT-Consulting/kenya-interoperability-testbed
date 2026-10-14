@@ -18,7 +18,7 @@ The DHA services are provided by a **mock** for now. Later, a local UAT environm
 | Topic | Decision |
 |---|---|
 | System Under Test | The **EMR/facility client** that calls DHA APIs. ITB plays DHA. |
-| Externally hosted EMRs | Supported through a public **HIE gateway** (nginx) that maps a clean per-vendor base URL to ITB; credentials are set **per system** (section 7). |
+| Externally hosted EMRs | Supported through a public **lab gateway** (nginx) that maps a clean per-vendor base URL to ITB; credentials are set **per system** (section 7). |
 | How the EMR is triggered | **Tester-driven** first: ITB `interact` steps tell the tester what to do in the EMR. Automated triggering comes later and is out of scope here. The `fake-emr.sh` script is the seed for it. |
 | Architecture | **ITB as a validating gateway** in front of a separate upstream (mock now, UAT later). |
 | Mock technology | **WireMock** (declarative stubs and fixture files). |
@@ -60,11 +60,11 @@ UAT base URL: `https://ilm-dev.dha.go.ke/uat-middleware/api/v1`
 
 ```
                                             docker network (compose)
-EMR (SUT) ──HTTP(S)──► hie-gateway (nginx) ──► gitb-srv  HttpMessagingV2 receive ──forward──► mock-hie (WireMock)
+EMR (SUT) ──HTTP(S)──► lab-gateway (nginx) ──► gitb-srv  HttpMessagingV2 receive ──forward──► mock-hie (WireMock)
   (local or vendor-     maps a clean vendor        validates the request                    /uat-middleware/api/v1/...
    hosted)              base URL to                relays the upstream response to the EMR
   DHA base URL =        /itbsrv/api/http/<apiKey>  reports results in gitb-ui
-  https://<alias>.<HIE_GATEWAY_DOMAIN>                   │
+  https://<alias>.<LAB_GATEWAY_DOMAIN>                   │
   (or raw: <gateway>/itbsrv/api/http/<apiKey>)           └─ upstream = $DOMAIN{dhaBaseUrl}
                                                             now:   http://mock-hie:8080/uat-middleware/api/v1
                                                             later: local UAT base URL
@@ -90,13 +90,13 @@ The mock contains no conformance logic, so nothing is lost when UAT replaces it.
 | `dha-hie-suite/README.md` | Setup: domain parameters, pointing the EMR at ITB, Docker networking notes. |
 | `mock-hie/mappings/*.json` | WireMock stubs. |
 | `mock-hie/__files/**` | Fixture response bodies. |
-| `docker-compose.yml` | New `mock-hie` service: `wiremock/wiremock:3.9.1` image, mounts `mock-hie/`, internal URL `http://mock-hie:8080`, host port `8095`. New `hie-gateway` service: `nginx:1.27-alpine` image, host port `9010` (HTTP, local). |
+| `docker-compose.yml` | New `mock-hie` service: `wiremock/wiremock:3.9.1` image, mounts `mock-hie/`, internal URL `http://mock-hie:8080`, host port `8095`. New `lab-gateway` service: `nginx:1.27-alpine` image, host port `9010` (HTTP, local). |
 | `docker-compose.public.yml` | Override for internet-facing deployment (section 7): TLS on 443 for the gateway and gitb-ui, `CALLBACK_ROOT_URL` set to the public host, and `ports: !reset []` on `gitb-srv` and `mock-hie` so they are not published on the host. Requires Docker Compose ≥ 2.24. |
-| `nginx/hie-gateway.conf` | Gateway config: vendor host → API key mapping, the raw receive path, rate limiting, and 404 for everything else (section 7.2). |
-| `nginx/hie-gateway-tls.conf` | TLS server blocks, used only by the public override. |
-| `nginx/hie-vendors.map.example` | Committed example of the vendor host → API key map. The real `nginx/hie-vendors.map` is gitignored. |
-| `nginx/hie-allowlist.conf.example` | Optional IP allowlist example. The real `nginx/hie-allowlist.conf` is gitignored, and an empty file means allow all. |
-| `.gitignore` | Add `nginx/hie-vendors.map`, `nginx/hie-allowlist.conf`, `nginx/certs/`. |
+| `nginx/lab-gateway.conf` | Gateway config: vendor host → API key mapping, the raw receive path, rate limiting, and 404 for everything else (section 7.2). |
+| `nginx/lab-gateway-tls.conf` | TLS server blocks, used only by the public override. |
+| `nginx/lab-vendors.map.example` | Committed example of the vendor host → API key map. The real `nginx/lab-vendors.map` is gitignored. |
+| `nginx/lab-allowlist.conf.example` | Optional IP allowlist example. The real `nginx/lab-allowlist.conf` is gitignored, and an empty file means allow all. |
+| `.gitignore` | Add `nginx/lab-vendors.map`, `nginx/lab-allowlist.conf`, `nginx/certs/`. |
 | `scripts/package-suite.sh` | Builds a clean suite zip (no top-level folder, no `__MACOSX`). Usable for the existing suites too. |
 | `scripts/fake-emr.sh` | Simulated EMR used for verification (section 6). |
 | `scripts/check-fixtures.sh` | Checks that every identity in `fixtures.json` resolves in the mock as expected. |
@@ -115,7 +115,7 @@ The mock contains no conformance logic, so nothing is lost when UAT replaces it.
 |---|---|---|---|---|---|
 | `dhaClientId` | Simple | Yes | No | Yes | Expected `client_id` from this EMR |
 | `dhaClientSecret` | Secret | Yes | No | Yes | Expected `client_secret`; hidden in reports |
-| `dhaGatewayBaseUrl` | Simple | No | No | Yes | This vendor's clean base URL, e.g. `https://acme-emr.hie-itb.example.org` |
+| `dhaGatewayBaseUrl` | Simple | No | No | Yes | This vendor's clean base URL, e.g. `https://acme-emr.lab-itb.example.org` |
 
 - The admin issues the credentials for each vendor system and sends them to the vendor out-of-band. This mirrors DHA, which issues credentials per app.
 - Per-system credentials stop vendors sharing one secret and allow revoking a single vendor.
@@ -227,7 +227,7 @@ There is no real EMR in this repo, so verification uses `scripts/fake-emr.sh` (b
    - missing Bearer
    - only one `X-Facility-*` header
 4. **`check-fixtures.sh`** passes.
-5. **Gateway** (`fake-emr.sh gateway`) uses `curl --resolve test-vendor.hie.localhost:9010:127.0.0.1` against a test entry in `nginx/hie-vendors.map`. It checks four cases:
+5. **Gateway** (`fake-emr.sh gateway`) uses `curl --resolve test-vendor.lab.localhost:9010:127.0.0.1` against a test entry in `nginx/lab-vendors.map`. It checks four cases:
 
    | Request | Expected result |
    |---|---|
@@ -242,43 +242,43 @@ If the automation API can't answer `interact` prompts in the deployed ITB versio
 
 ### 7.1 Exposure model
 
-The internet only ever reaches two things: the **HIE gateway** and the **gitb-ui** (for vendor testers). Both are served over TLS by `hie-gateway` in the public override.
+The internet only ever reaches two things: the **lab gateway** and the **gitb-ui** (for vendor testers). Both are served over TLS by `lab-gateway` in the public override.
 
 | Component | Local (`docker-compose.yml`) | Public (`+ docker-compose.public.yml`) |
 |---|---|---|
-| `hie-gateway` | HTTP on `:9010` | HTTPS on `:443` for `*.<HIE_GATEWAY_DOMAIN>` and `<ITB_UI_HOST>` |
-| `gitb-ui-proxy` | HTTP on `:9000` | Not published. Reached via `hie-gateway`, which serves `https://<ITB_UI_HOST>` and proxies to it, including WebSockets with a 3600s timeout. |
+| `lab-gateway` | HTTP on `:9010` | HTTPS on `:443` for `*.<LAB_GATEWAY_DOMAIN>` and `<ITB_UI_HOST>` |
+| `gitb-ui-proxy` | HTTP on `:9000` | Not published. Reached via `lab-gateway`, which serves `https://<ITB_UI_HOST>` and proxies to it, including WebSockets with a 3600s timeout. |
 | `gitb-srv` | `:8080` | Not published. Internal only: receive paths go through the gateway, and the automation API is not reachable from outside. |
 | `mock-hie` | `:8095` | Not published. Internal only. |
 | `CALLBACK_ROOT_URL` | `http://localhost:8080` | `https://<ITB_UI_HOST>` (or the gateway host), so the URLs ITB shows are reachable by vendors |
 
 - **TLS certificates:**
-  - A wildcard certificate for `*.<HIE_GATEWAY_DOMAIN>` and a certificate for `<ITB_UI_HOST>`, mounted from `nginx/certs/` (gitignored).
+  - A wildcard certificate for `*.<LAB_GATEWAY_DOMAIN>` and a certificate for `<ITB_UI_HOST>`, mounted from `nginx/certs/` (gitignored).
   - Getting them is an operations prerequisite: a Let's Encrypt wildcard needs a DNS-01 challenge. Automating it is out of scope; the README documents the expected file names.
-- **DNS:** a wildcard record `*.<HIE_GATEWAY_DOMAIN>` pointing to the host.
-- **Hostnames:** `HIE_GATEWAY_DOMAIN` and `ITB_UI_HOST` are set in `.env`.
+- **DNS:** a wildcard record `*.<LAB_GATEWAY_DOMAIN>` pointing to the host.
+- **Hostnames:** `LAB_GATEWAY_DOMAIN` and `ITB_UI_HOST` are set in `.env`.
 
-### 7.2 Clean base URL mapping (`nginx/hie-gateway.conf`)
+### 7.2 Clean base URL mapping (`nginx/lab-gateway.conf`)
 
 **Goal:** each vendor EMR sees a bare host that looks like DHA's, with no path prefix and no API key in its configuration.
 
 ```text
-https://acme-emr.hie-itb.example.org/tenants/token
+https://acme-emr.lab-itb.example.org/tenants/token
         └─ Host header ─┘            └─ path + query kept as-is ─┘
    ──► http://gitb-srv:8080/itbsrv/api/http/<acme API key>/tenants/token
 ```
 
-- **`map $host $vendor_api_key { default ""; include /etc/nginx/hie-vendors.map; }`**
-  - Each line in the map file is `<full hostname> <ITB system API key>;`. For example, `acme-emr.hie-itb.example.org 7F3A...;`
-  - Local testing uses `*.hie.localhost` names.
-- **Vendor server block** (`server_name *.<HIE_GATEWAY_DOMAIN> *.hie.localhost`):
+- **`map $host $vendor_api_key { default ""; include /etc/nginx/lab-vendors.map; }`**
+  - Each line in the map file is `<full hostname> <ITB system API key>;`. For example, `acme-emr.lab-itb.example.org 7F3A...;`
+  - Local testing uses `*.lab.localhost` names.
+- **Vendor server block** (`server_name *.<LAB_GATEWAY_DOMAIN> *.lab.localhost`):
   - If `$vendor_api_key` is empty, it returns 404 `{"error":"Not Found","message":"Unknown vendor host"}`.
   - Otherwise, `location / { proxy_pass http://gitb-srv:8080/itbsrv/api/http/$vendor_api_key$request_uri; }`.
   - `Host`, `X-Forwarded-For` and `X-Forwarded-Proto` are set on the proxied request.
 - **Raw receive path:** the default server block on the gateway also accepts `/itbsrv/api/http/` and proxies it unchanged. This serves EMRs configured with the raw URL, and admins who have not added a map entry yet.
 - **Everything else is denied.** Any other path on the gateway, including `/itbsrv/api/rest/` (the automation API) and gitb-srv's other endpoints, returns 404.
-- **Rate limiting:** `limit_req_zone $binary_remote_addr zone=hie:10m rate=10r/s` with `burst=20 nodelay`. Excess requests get 429.
-- **Optional IP allowlist:** `include /etc/nginx/hie-allowlist.conf;` holding `allow <vendor egress IP>; ... deny all;`. An empty file means no restriction.
+- **Rate limiting:** `limit_req_zone $binary_remote_addr zone=lab:10m rate=10r/s` with `burst=20 nodelay`. Excess requests get 429.
+- **Optional IP allowlist:** `include /etc/nginx/lab-allowlist.conf;` holding `allow <vendor egress IP>; ... deny all;`. An empty file means no restriction.
 - **Body and timeouts:**
   - `client_max_body_size 5m`.
   - `proxy_read_timeout 120s`, which covers ITB checking the request and forwarding it upstream.
@@ -287,9 +287,9 @@ https://acme-emr.hie-itb.example.org/tenants/token
 **Onboarding a vendor** (README checklist):
 
 1. Create the organisation and system in gitb-ui, and note the system API key.
-2. Set the system properties `dhaClientId`, `dhaClientSecret` and `dhaGatewayBaseUrl = https://<alias>.<HIE_GATEWAY_DOMAIN>`.
-3. Add `<alias>.<HIE_GATEWAY_DOMAIN> <API key>;` to `nginx/hie-vendors.map`. Optionally add the vendor's egress IP to the allowlist.
-4. Run `docker compose exec hie-gateway nginx -s reload`.
+2. Set the system properties `dhaClientId`, `dhaClientSecret` and `dhaGatewayBaseUrl = https://<alias>.<LAB_GATEWAY_DOMAIN>`.
+3. Add `<alias>.<LAB_GATEWAY_DOMAIN> <API key>;` to `nginx/lab-vendors.map`. Optionally add the vendor's egress IP to the allowlist.
+4. Run `docker compose exec lab-gateway nginx -s reload`.
 5. Send the vendor the base URL and credentials out-of-band.
 
 **Revoking a vendor:** remove the map line and reload nginx. If the key has leaked, also regenerate the system API key in gitb-ui.
@@ -303,7 +303,7 @@ https://acme-emr.hie-itb.example.org/tenants/token
 
 ### 7.4 Fallback when ITB isn't publicly hosted yet
 
-For a one-off vendor session from a non-public machine, expose **only** `hie-gateway:9010` through a tunnel such as `cloudflared` or `ngrok`, and set `CALLBACK_ROOT_URL` accordingly.
+For a one-off vendor session from a non-public machine, expose **only** `lab-gateway:9010` through a tunnel such as `cloudflared` or `ngrok`, and set `CALLBACK_ROOT_URL` accordingly.
 
 With a single tunnel hostname the vendor uses the raw receive path, because wildcard vendor hosts aren't available on most tunnels.
 
