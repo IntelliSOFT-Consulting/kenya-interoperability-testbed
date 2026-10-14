@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testcase id="CR-02" supportsParallelExecution="false" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+    <metadata>
+        <gitb:name>CR-02 Lookup by other identifier types</gitb:name>
+        <gitb:version>0.1.0</gitb:version>
+        <gitb:description>The EMR looks up one client for each remaining identification_type
+            (ClientRegistry ID, Birth Certificate, Birth Notification, Alien ID, Refugee ID,
+            Mandate Number), using the exact API enum spelling.</gitb:description>
+    </metadata>
+    <imports>
+        <artifact name="fixtures" type="binary">resources/fixtures.json</artifact>
+    </imports>
+    <actors>
+        <gitb:actor id="EMR" role="SUT"/>
+        <gitb:actor id="DHA_HIE"/>
+    </actors>
+    <variables>
+        <var name="skipInteractions" type="boolean"><value>false</value></var>
+    </variables>
+    <steps>
+        <call id="base" path="scriptlets/emrBaseUrl.xml" hidden="true"/>
+        <process id="alternateCount" handler="JsonPathProcessor" operation="count" output="alternates" hidden="true">
+            <input name="content">$fixtures</input>
+            <input name="expression">"$.alternates[*]"</input>
+        </process>
+        <foreach counter="i" start="0" end="$alternates" desc="One lookup per identifier type">
+            <do>
+                <process id="fixtureType" handler="JsonPathProcessor" operation="process" output="expectedType" hidden="true">
+                    <input name="content">$fixtures</input>
+                    <input name="expression">"$.alternates[" || $i || "].type"</input>
+                </process>
+                <process id="fixtureNumber" handler="JsonPathProcessor" operation="process" output="expectedNumber" hidden="true">
+                    <input name="content">$fixtures</input>
+                    <input name="expression">"$.alternates[" || $i || "].number"</input>
+                </process>
+                <process id="fixtureName" handler="JsonPathProcessor" operation="process" output="expectedName" hidden="true">
+                    <input name="content">$fixtures</input>
+                    <input name="expression">"$.alternates[" || $i || "].displayName"</input>
+                </process>
+                <interact id="instructions" desc="Instructions" blocking="false">
+                    <instruct desc="What to do" level="INFO" forceDisplay="true">"With your EMR's HIE base URL set to " || $base{url} || ", search the Client Registry for the client with " || $expectedType || " " || $expectedNumber || "."</instruct>
+                </interact>
+                <call id="lookup" path="scriptlets/receiveAndForward.xml">
+                    <input name="uriExtension">'/patients'</input>
+                    <input name="method">'GET'</input>
+                </call>
+                <call id="bearerChecks" path="scriptlets/checkBearer.xml">
+                    <input name="headers">$lookup{headers}</input>
+                </call>
+                <call id="queryChecks" path="scriptlets/checkPatientQuery.xml">
+                    <input name="request">$lookup{request}</input>
+                    <input name="queryString">$lookup{queryString}</input>
+                    <input name="expectedType">$expectedType</input>
+                    <input name="expectedNumber">$expectedNumber</input>
+                </call>
+                <verify id="clientFound" handler="StringValidator" desc="The Client Registry returned the client">
+                    <input name="actual">$lookup{upstreamStatus}</input>
+                    <input name="expected">"200"</input>
+                </verify>
+                <interact id="confirm" desc="Confirm the EMR shows the client" skipped="$skipInteractions">
+                    <instruct desc="Expected client" level="INFO">"Expected client: " || $expectedName</instruct>
+                    <request name="shown" desc="Does your EMR show this client?" inputType="SELECT_SINGLE" options="yes,no" optionLabels="Yes,No"/>
+                </interact>
+                <if desc="Check the tester's confirmation">
+                    <cond>not($skipInteractions)</cond>
+                    <then>
+                        <verify id="clientShown" handler="StringValidator" desc="The EMR shows the returned client">
+                            <input name="actual">$confirm{shown}</input>
+                            <input name="expected">"yes"</input>
+                            <input name="failureMessage">"The tester reported that the EMR did not show " || $expectedName || "."</input>
+                        </verify>
+                    </then>
+                </if>
+            </do>
+        </foreach>
+    </steps>
+    <output>
+        <success><default>"The EMR looked up clients by every other identification type correctly."</default></success>
+        <failure><default>"At least one lookup did not conform; see the failed steps."</default></failure>
+    </output>
+</testcase>

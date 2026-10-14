@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testcase id="CR-03" supportsParallelExecution="false" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+    <metadata>
+        <gitb:name>CR-03 Client not found</gitb:name>
+        <gitb:version>0.1.0</gitb:version>
+        <gitb:description>The EMR looks up an unknown National ID. The HIE answers 404, and the
+            EMR must tell the user that no client was found, without creating or showing one.</gitb:description>
+    </metadata>
+    <imports>
+        <artifact name="fixtures" type="binary">resources/fixtures.json</artifact>
+    </imports>
+    <actors>
+        <gitb:actor id="EMR" role="SUT"/>
+        <gitb:actor id="DHA_HIE"/>
+    </actors>
+    <variables>
+        <var name="skipInteractions" type="boolean"><value>false</value></var>
+    </variables>
+    <steps>
+        <call id="base" path="scriptlets/emrBaseUrl.xml" hidden="true"/>
+        <process id="fixtureType" handler="JsonPathProcessor" operation="process" output="expectedType" hidden="true">
+            <input name="content">$fixtures</input>
+            <input name="expression">"$.notFound.type"</input>
+        </process>
+        <process id="fixtureNumber" handler="JsonPathProcessor" operation="process" output="expectedNumber" hidden="true">
+            <input name="content">$fixtures</input>
+            <input name="expression">"$.notFound.number"</input>
+        </process>
+        <interact id="instructions" desc="Instructions" blocking="false">
+            <instruct desc="What to do" level="INFO" forceDisplay="true">"With your EMR's HIE base URL set to " || $base{url} || ", search the Client Registry for the client with " || $expectedType || " " || $expectedNumber || ". No such client exists."</instruct>
+        </interact>
+        <call id="lookup" path="scriptlets/receiveAndForward.xml">
+            <input name="uriExtension">'/patients'</input>
+            <input name="method">'GET'</input>
+        </call>
+        <call id="bearerChecks" path="scriptlets/checkBearer.xml">
+            <input name="headers">$lookup{headers}</input>
+        </call>
+        <call id="queryChecks" path="scriptlets/checkPatientQuery.xml">
+            <input name="request">$lookup{request}</input>
+            <input name="queryString">$lookup{queryString}</input>
+            <input name="expectedType">$expectedType</input>
+            <input name="expectedNumber">$expectedNumber</input>
+        </call>
+        <verify id="clientNotFound" handler="StringValidator" desc="The Client Registry answered not found">
+            <input name="actual">$lookup{upstreamStatus}</input>
+            <input name="expected">"404"</input>
+        </verify>
+        <interact id="confirm" desc="Confirm the EMR handled not found" skipped="$skipInteractions">
+            <request name="handled" desc="Did your EMR say no client was found, without creating or showing a client?" inputType="SELECT_SINGLE" options="yes,no" optionLabels="Yes,No"/>
+        </interact>
+        <if desc="Check the tester's confirmation">
+            <cond>not($skipInteractions)</cond>
+            <then>
+                <verify id="notFoundHandled" handler="StringValidator" desc="The EMR handled not found">
+                    <input name="actual">$confirm{handled}</input>
+                    <input name="expected">"yes"</input>
+                    <input name="failureMessage">"The tester reported that the EMR did not handle the not-found reply correctly."</input>
+                </verify>
+            </then>
+        </if>
+    </steps>
+    <output>
+        <success><default>"The EMR handled an unknown client correctly."</default></success>
+        <failure><default>"The not-found lookup did not conform; see the failed steps."</default></failure>
+    </output>
+</testcase>

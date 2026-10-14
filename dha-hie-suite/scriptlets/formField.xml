@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scriptlet id="formField" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+    <metadata>
+        <gitb:name>Read one field from form-encoded text</gitb:name>
+        <gitb:description>Returns the decoded value of a field in a k=v&amp;k2=v2 string (a form
+            body or a query string), handling both + and %20 for spaces. Empty when absent.</gitb:description>
+    </metadata>
+    <params>
+        <var name="text" type="string"/>
+        <var name="name" type="string"/>
+    </params>
+    <steps>
+        <assign to="value" type="string">''</assign>
+        <assign to="pattern" type="string">'^(?:.*&amp;)?' || $name || '=([^&amp;]*)(?:&amp;.*)?$'</assign>
+        <process id="fieldPresent" handler="RegExpProcessor" operation="check" output="present">
+            <input name="input">$text</input>
+            <input name="expression">$pattern</input>
+        </process>
+        <if desc="Decode the field when present">
+            <cond>$present</cond>
+            <then>
+                <process id="fieldMatch" handler="RegExpProcessor" operation="collect" output="matches">
+                    <input name="input">$text</input>
+                    <input name="expression">$pattern</input>
+                </process>
+                <process id="fieldDecode" handler="TextProcessor" operation="formDecode" output="value">
+                    <input name="input">$matches{0}</input>
+                </process>
+            </then>
+        </if>
+    </steps>
+    <output name="value"/>
+</scriptlet>

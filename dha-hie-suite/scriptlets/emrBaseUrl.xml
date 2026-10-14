@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scriptlet id="emrBaseUrl" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+    <metadata>
+        <gitb:name>HIE base URL for this EMR</gitb:name>
+        <gitb:description>The vendor's clean lab-gateway URL when labGatewayBaseUrl is set,
+            otherwise the raw receive base for this system.</gitb:description>
+    </metadata>
+    <steps>
+        <assign to="url" type="string">if ($SYSTEM{labGatewayBaseUrl} != '') then $SYSTEM{labGatewayBaseUrl} else $DOMAIN{labServiceBaseUrl} || '/' || $SYSTEM{apiKey}</assign>
+    </steps>
+    <output name="url"/>
+</scriptlet>

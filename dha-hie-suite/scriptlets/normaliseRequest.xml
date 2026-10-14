@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scriptlet id="normaliseRequest" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+    <metadata>
+        <gitb:name>Normalise an incoming EMR request</gitb:name>
+        <gitb:description>Returns the headers the checks need under canonical names, accepting
+            lower-cased names too, and the raw query string. The query string comes from the
+            request URI when it has one, otherwise from the X-Lab-Original-Uri header added by
+            lab-gateway (the ITB docs don't say whether {request}{uri} keeps the query).</gitb:description>
+    </metadata>
+    <params>
+        <var name="request" type="map"/>
+    </params>
+    <steps>
+        <assign to="headers{Authorization}" type="string">if ($request{headers}{Authorization} != '') then $request{headers}{Authorization} else $request{headers}{authorization}</assign>
+        <assign to="headers{Content-Type}" type="string">if ($request{headers}{Content-Type} != '') then $request{headers}{Content-Type} else $request{headers}{content-type}</assign>
+        <assign to="headers{X-Facility-Id}" type="string">if ($request{headers}{X-Facility-Id} != '') then $request{headers}{X-Facility-Id} else $request{headers}{x-facility-id}</assign>
+        <assign to="headers{X-Facility-Id-Type}" type="string">if ($request{headers}{X-Facility-Id-Type} != '') then $request{headers}{X-Facility-Id-Type} else $request{headers}{x-facility-id-type}</assign>
+        <assign to="headers{X-Lab-Original-Uri}" type="string">if ($request{headers}{X-Lab-Original-Uri} != '') then $request{headers}{X-Lab-Original-Uri} else $request{headers}{x-lab-original-uri}</assign>
+        <assign to="requestUri" type="string">$request{uri}</assign>
+        <assign to="queryString" type="string">if (contains($requestUri, '?')) then substring-after($requestUri, '?') else substring-after($headers{X-Lab-Original-Uri}, '?')</assign>
+    </steps>
+    <output name="headers"/>
+    <output name="queryString"/>
+</scriptlet>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scriptlet id="checkPatientQuery" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+    <metadata>
+        <gitb:name>Check a Client Registry lookup</gitb:name>
+        <gitb:description>GET /patients with both query parameters, identification_type from the
+            API enum and equal to the expected type, and the expected number.</gitb:description>
+    </metadata>
+    <params>
+        <var name="request" type="map"/>
+        <var name="queryString" type="string"/>
+        <var name="expectedType" type="string"/>
+        <var name="expectedNumber" type="string"/>
+    </params>
+    <steps>
+        <verify id="lookupMethod" handler="StringValidator" desc="Lookup uses GET">
+            <input name="actual">$request{method}</input>
+            <input name="expected">"GET"</input>
+        </verify>
+        <call id="queryType" path="scriptlets/formField.xml" hidden="true">
+            <input name="text">$queryString</input>
+            <input name="name">'identification_type'</input>
+        </call>
+        <call id="queryNumber" path="scriptlets/formField.xml" hidden="true">
+            <input name="text">$queryString</input>
+            <input name="name">'identification_number'</input>
+        </call>
+        <assign to="idType" type="string">$queryType{value}</assign>
+        <assign to="idNumber" type="string">$queryNumber{value}</assign>
+        <verify id="typePresent" handler="ExpressionValidator" desc="identification_type is sent">
+            <input name="expression">$idType != ''</input>
+            <input name="failureMessage">"identification_type query parameter is missing."</input>
+        </verify>
+        <verify id="typeInEnum" handler="ExpressionValidator" desc="identification_type is an API enum value">
+            <input name="expression">$idType = ('National ID', 'ClientRegistry ID', 'Birth Notification', 'Birth Certificate', 'Alien ID', 'Refugee ID', 'Mandate Number')</input>
+            <input name="failureMessage">"identification_type must be exactly '" || $expectedType || "' (API enum spelling) but was '" || $idType || "'."</input>
+        </verify>
+        <verify id="typeExpected" handler="ExpressionValidator" desc="identification_type is the one the tester was asked to use">
+            <input name="expression">$idType = $expectedType</input>
+            <input name="failureMessage">"identification_type must be exactly '" || $expectedType || "' but was '" || $idType || "'."</input>
+        </verify>
+        <verify id="numberExpected" handler="ExpressionValidator" desc="identification_number is the one the tester was asked to use">
+            <input name="expression">$idNumber = $expectedNumber</input>
+            <input name="failureMessage">"identification_number must be '" || $expectedNumber || "' but was '" || $idNumber || "'."</input>
+        </verify>
+    </steps>
+</scriptlet>

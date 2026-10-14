@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testcase id="AUTH-01" supportsParallelExecution="false" xmlns="http://www.gitb.com/tdl/v1/" xmlns:gitb="http://www.gitb.com/core/v1/">
+    <metadata>
+        <gitb:name>AUTH-01 Obtain access token</gitb:name>
+        <gitb:version>0.1.0</gitb:version>
+        <gitb:description>The EMR requests an access token with POST /tenants/token using the
+            client credentials issued to it.</gitb:description>
+    </metadata>
+    <actors>
+        <gitb:actor id="EMR" role="SUT"/>
+        <gitb:actor id="DHA_HIE"/>
+    </actors>
+    <variables>
+        <var name="skipInteractions" type="boolean"><value>false</value></var>
+    </variables>
+    <steps>
+        <call id="base" path="scriptlets/emrBaseUrl.xml" hidden="true"/>
+        <interact id="instructions" desc="Instructions" blocking="false">
+            <instruct desc="What to do" level="INFO" forceDisplay="true">"Set your EMR's HIE base URL to " || $base{url} || " and its client_id to " || $SYSTEM{hieClientId} || " (use the client_secret you were issued). Then make the EMR request a new access token."</instruct>
+        </interact>
+        <call id="token" path="scriptlets/receiveAndForward.xml">
+            <input name="uriExtension">'/tenants/token'</input>
+            <input name="method">'POST'</input>
+            <input name="hideRequestBody">true()</input>
+        </call>
+        <call id="tokenChecks" path="scriptlets/checkTokenRequest.xml">
+            <input name="request">$token{request}</input>
+            <input name="headers">$token{headers}</input>
+        </call>
+        <verify id="tokenIssued" handler="StringValidator" desc="The HIE issued a token">
+            <input name="actual">$token{upstreamStatus}</input>
+            <input name="expected">"200"</input>
+        </verify>
+        <process id="hasAccessToken" handler="JsonPathProcessor" operation="exists" output="accessTokenPresent">
+            <input name="content">$token{upstreamBody}</input>
+            <input name="expression">"$.access_token"</input>
+        </process>
+        <verify id="accessTokenReturned" handler="ExpressionValidator" desc="The reply carries access_token">
+            <input name="expression">$accessTokenPresent</input>
+        </verify>
+    </steps>
+    <output>
+        <success><default>"The EMR obtained an access token correctly."</default></success>
+        <failure><default>"The token request did not conform; see the failed steps."</default></failure>
+    </output>
+</testcase>
