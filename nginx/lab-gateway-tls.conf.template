@@ -1,0 +1,51 @@
+# Public TLS entry points (docker-compose.public.yml only).
+
+# Declared before the servers that use it.
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+# Vendor EMR hosts: *.<LAB_GATEWAY_DOMAIN> with the wildcard certificate.
+server {
+    listen 443 ssl default_server;
+    server_name _;
+    ssl_certificate     /etc/nginx/certs/gateway.crt;
+    ssl_certificate_key /etc/nginx/certs/gateway.key;
+
+    access_log /var/log/nginx/access.log lab_gateway;
+    default_type application/json;
+    client_max_body_size 5m;
+
+    include /etc/nginx/lab/lab-allowlist.conf;
+    include /etc/nginx/snippets/lab-gateway-receive.inc;
+    include /etc/nginx/snippets/lab-gateway-vendor.inc;
+}
+
+# Lab UI for testers, plus raw receive URLs under CALLBACK_ROOT_URL.
+server {
+    listen 443 ssl;
+    server_name ${ITB_UI_HOST};
+    ssl_certificate     /etc/nginx/certs/ui.crt;
+    ssl_certificate_key /etc/nginx/certs/ui.key;
+
+    access_log /var/log/nginx/access.log lab_gateway;
+    client_max_body_size 50m;
+
+    include /etc/nginx/snippets/lab-gateway-receive.inc;
+
+    location / {
+        set $lab_ui_proxy lab-ui-proxy:80;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffering off;
+        proxy_pass http://$lab_ui_proxy;
+    }
+}

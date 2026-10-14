@@ -58,3 +58,23 @@ Set `hieBaseUrl` to the UAT base URL. Set each system's credentials to the
 UAT-issued ones. Replace the identities in `resources/fixtures.json` with UAT
 test identities, then repackage and upload. No test-case XML changes are needed.
 Confirm the assumed 401/404 shapes against UAT.
+
+## Public deployment
+
+1. DNS: a wildcard record `*.<LAB_GATEWAY_DOMAIN>` and a record for `<ITB_UI_HOST>`,
+   both pointing to the host.
+2. `.env`: `ITB_UI_HOST=<ui host>` and `LAB_GATEWAY_DOMAIN=<gateway domain>`.
+3. Certificates in `nginx/certs/` (gitignored):
+   - `gateway.crt`/`gateway.key`: wildcard `*.<LAB_GATEWAY_DOMAIN>`. Let's Encrypt needs a DNS-01 challenge for this.
+   - `ui.crt`/`ui.key`: `<ITB_UI_HOST>`.
+4. `docker compose -f docker-compose.yml -f docker-compose.public.yml up -d`
+5. Set the domain parameter `labServiceBaseUrl = https://<ITB_UI_HOST>/itbsrv/api/http`.
+
+Only port 443 is published. The ITB engine, the automation API, mock-hie and the
+UI proxy are internal. Use synthetic fixtures only, because the endpoint is
+internet-facing.
+
+**Temporary sharing without a public host:** expose only `lab-gateway:9010`
+through a tunnel (cloudflared/ngrok), set `labServiceBaseUrl` to
+`<tunnel URL>/itbsrv/api/http`, and have the vendor use the raw receive URL.
+This is not for ongoing use.

@@ -1,0 +1,32 @@
+# Internet-facing overlay: only lab-gateway is published (HTTPS 443). It serves
+# vendor EMR hosts and the lab UI host; everything else stays on the internal
+# network. Use:
+#   docker compose -f docker-compose.yml -f docker-compose.public.yml up -d
+# Needs Docker Compose >= 2.24 (!reset / !override), ITB_UI_HOST in .env, and
+# certificates in nginx/certs/ (gateway.crt/key: wildcard *.<LAB_GATEWAY_DOMAIN>;
+# ui.crt/key: <ITB_UI_HOST>).
+services:
+
+   gitb-srv:
+      ports: !reset []
+      environment:
+        - CALLBACK_ROOT_URL=https://${ITB_UI_HOST:?set ITB_UI_HOST in .env}
+
+   gitb-ui:
+      environment:
+        - TESTBED_HOME_LINK=https://${ITB_UI_HOST}/
+
+   gitb-ui-proxy:
+      ports: !reset []
+
+   mock-hie:
+      ports: !reset []
+
+   lab-gateway:
+      ports: !override
+        - "443:443"
+      environment:
+        - ITB_UI_HOST=${ITB_UI_HOST}
+      volumes:
+        - ./nginx/lab-gateway-tls.conf.template:/etc/nginx/templates/lab-gateway-tls.conf.template:ro
+        - ./nginx/certs:/etc/nginx/certs:ro

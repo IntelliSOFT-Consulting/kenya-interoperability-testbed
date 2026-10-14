@@ -3,3 +3,4 @@
 nginx/lab/
 .cache/
 scripts/.fake-emr.env
+nginx/certs/
