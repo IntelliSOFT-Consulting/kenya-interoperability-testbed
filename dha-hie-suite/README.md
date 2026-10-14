@@ -15,6 +15,8 @@ ITB then checks the call: credentials, Bearer JWT, facility headers, and the
 
 1. `scripts/init-lab-gateway.sh && docker compose up -d`
 2. In the lab UI (http://localhost:9000), as administrator:
+   - Domain `Kenya HIE` and a community `Kenya HIE community` bound to it. With
+     *Manage test sessions via REST API* enabled, scripts can start sessions.
    - Domain parameters: `hieBaseUrl = http://mock-hie:8080/uat-middleware/api/v1`
      and `labServiceBaseUrl = http://localhost:9010/itbsrv/api/http` (both *in tests*).
    - Custom system properties: `hieClientId` (simple), `hieClientSecret` (secret)
@@ -34,6 +36,11 @@ ITB then checks the call: credentials, Bearer JWT, facility headers, and the
 3. Answer the confirmation prompt about what the EMR showed.
 
 Test identities are in `resources/fixtures.json`. They are synthetic only.
+
+If a step shows only "An error occurred while calculating the step's result",
+open **View log** on the session. An upstream problem appears there as an error
+on the step `Forward to the HIE upstream` (for example `[Connect]` when the
+HIE upstream is unreachable).
 
 ## Changing test identities
 
