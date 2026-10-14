@@ -1,7 +1,7 @@
 # DHA HIE APIs — Authentication & Client Registry Conformance Suite
 
 **Date:** 2026-10-14
-**Status:** Draft for review
+**Status:** Approved; implemented (see §11 for decisions made during implementation)
 **Scope:** First increment of testing Kenya DHA AfyaConnect HIE APIs in the Kenya Interoperability Testbed (ITB).
 
 ## 1. Purpose
@@ -104,14 +104,19 @@ The mock contains no conformance logic, so nothing is lost when UAT replaces it.
 | `docker-compose.yml` | New `mock-hie` service: `wiremock/wiremock:3.9.1` image, mounts `mock-hie/`, internal URL `http://mock-hie:8080`, host port `8095`. New `lab-gateway` service: `nginx:1.27-alpine` image, host port `9010` (HTTP, local). |
 | `docker-compose.public.yml` | Override for internet-facing deployment (section 7): TLS on 443 for the gateway and lab UI, `CALLBACK_ROOT_URL` set to the public host, and `ports: !reset []` on the `gitb-srv` (lab-service) and `mock-hie` services so they are not published on the host. Requires Docker Compose ≥ 2.24. |
 | `nginx/lab-gateway.conf` | Gateway config: vendor host → API key mapping, the raw receive path, rate limiting, and 404 for everything else (section 7.2). |
-| `nginx/lab-gateway-tls.conf` | TLS server blocks, used only by the public override. |
-| `nginx/lab-vendors.map.example` | Committed example of the vendor host → API key map. The real `nginx/lab-vendors.map` is gitignored. |
-| `nginx/lab-allowlist.conf.example` | Optional IP allowlist example. The real `nginx/lab-allowlist.conf` is gitignored, and an empty file means allow all. |
+| `nginx/lab-gateway-receive.inc`, `nginx/lab-gateway-vendor.inc` | Shared locations for the raw receive path and vendor-host routing, included by the HTTP and TLS servers. |
+| `nginx/lab-gateway-tls.conf.template` | TLS server blocks (vendor wildcard host and the lab UI host), rendered by the nginx image's envsubst; used only by the public override. |
+| `nginx/lab-vendors.map.example` | Committed example of the vendor host → API key map. The real map is `nginx/lab/lab-vendors.map` (gitignored directory, mounted as a directory so edits are seen on reload). |
+| `nginx/lab-allowlist.conf.example` | Optional IP allowlist example. The real file is `nginx/lab/lab-allowlist.conf`; comments only means allow all. |
+| `scripts/init-lab-gateway.sh` | Creates `nginx/lab/` from the examples without overwriting. |
 | `docker-compose.yml` (existing services) | Add network aliases to the existing services, keeping their service names (section 3.3). |
 | `.gitignore` | Add `nginx/lab-vendors.map`, `nginx/lab-allowlist.conf`, `nginx/certs/`. |
 | `scripts/package-suite.sh` | Builds a clean suite zip (no top-level folder, no `__MACOSX`). Usable for the existing suites too. |
 | `scripts/fake-emr.sh` | Simulated EMR used for verification (section 6). |
-| `scripts/check-fixtures.sh` | Checks that every identity in `fixtures.json` resolves in the mock as expected. |
+| `mock-hie/generate_fixtures.py` | Generates the mock's Client Registry stubs and bodies from `dha-hie-suite/resources/fixtures.json` (the single source of identities). |
+| `scripts/check-fixtures.sh` | Fails when the generated mock files don't match `fixtures.json`; `--write` regenerates them. |
+| `scripts/validate-suite.sh` | Validates the suite XML against the GITB TDL XSD. |
+| `scripts/check-aliases.sh`, `scripts/check-public-overlay.sh` | Check the network aliases and the merged public overlay. |
 
 ### 3.2 Configuration
 
@@ -120,6 +125,7 @@ The mock contains no conformance logic, so nothing is lost when UAT replaces it.
 | Parameter | Kind | Initial value | Used for |
 |---|---|---|---|
 | `hieBaseUrl` | Simple | `http://mock-hie:8080/uat-middleware/api/v1` | Upstream for forwarding |
+| `labServiceBaseUrl` | Simple | `http://localhost:9010/itbsrv/api/http` | Raw receive base through lab-gateway, shown to testers (no TDL variable exposes it) |
 
 **System properties** (one set per EMR system, defined in the community's custom system properties):
 
@@ -137,7 +143,7 @@ The mock contains no conformance logic, so nothing is lost when UAT replaces it.
 | `labGatewayBaseUrl` | URL shown |
 |---|---|
 | Set | `$SYSTEM{labGatewayBaseUrl}` |
-| Not set | The raw receive base, `<CALLBACK_ROOT_URL>/itbsrv/api/http/$SYSTEM{apiKey}` |
+| Not set | The raw receive base, `$DOMAIN{labServiceBaseUrl}/$SYSTEM{apiKey}` |
 
 ### 3.3 Service aliases
 
@@ -177,6 +183,8 @@ gitb-srv:
 Every case runs with `supportsParallelExecution="false"`, because the receive URL is shared for each system. All cases start with an `interact` step that shows the receive base URL and the instruction for the tester.
 
 ### 4.1 Shared scriptlets
+
+Checks run **after** the reply: the receive's `result` block only forwards upstream and relays the response, then the caller checks `$emrCall{request}` and `$emrCall{response}`. A failing check therefore never blocks the EMR. Helper scriptlets: `normaliseRequest` (canonical header names, accepting lower-case, plus the query string from the URI or the `X-Lab-Original-Uri` header), `formField` (decodes one field of form-encoded text, `+` or `%20`) and `emrBaseUrl` (the URL shown to testers).
 
 - **`receiveAndForward(uriExtension, method, checks)`**
   1. HttpMessagingV2 `receive` on `uriExtension`.
@@ -281,7 +289,9 @@ There is no real EMR in this repo, so verification uses `scripts/fake-emr.sh` (b
    | `/itbsrv/api/rest/...` through the gateway | 404, because the automation API is not exposed |
    | More than the rate limit | 429 |
 
-If the automation API can't answer `interact` prompts in the deployed ITB version, steps 2, 3 and 5 fall back to a manual run in the lab UI following the README. The README documents this.
+ITB 1.30.1 has no API for answering `interact` prompts. Every test case declares a `skipInteractions` input (default `false`) that skips the confirmation prompts; `fake-emr.sh` sets it to `true` through `inputMapping` when starting sessions. Instruction pop-ups are non-blocking.
+
+Additional runs (inputs real EMRs send that the cases above don't): token form with `grant_type`/`scope`, JSON token body (warning only), query with `+` for spaces, reordered and extra parameters, lower-case `authorization`, and the upstream (`mock-hie`) stopped, which must end in FAILURE without hanging.
 
 ## 7. Deployment for externally hosted (vendor) EMRs
 
@@ -320,6 +330,7 @@ https://acme-emr.lab-itb.example.org/tenants/token
   - If `$vendor_api_key` is empty, it returns 404 `{"error":"Not Found","message":"Unknown vendor host"}`.
   - Otherwise, `location / { proxy_pass http://lab-service:8080/itbsrv/api/http/$vendor_api_key$request_uri; }`.
   - `Host`, `X-Forwarded-For` and `X-Forwarded-Proto` are set on the proxied request.
+- **Headers added:** every proxied request carries `X-Lab-Original-Uri: $request_uri`, because the ITB docs don't say whether a receive step's `{request}{uri}` keeps the query string; every proxied response carries `X-Lab-Upstream: lab-service`. All EMR traffic, including local runs, therefore goes through the gateway.
 - **Raw receive path:** the default server block on the gateway also accepts `/itbsrv/api/http/` and proxies it unchanged. This serves EMRs configured with the raw URL, and admins who have not added a map entry yet.
 - **Everything else is denied.** Any other path on the gateway, including `/itbsrv/api/rest/` (the automation API) and lab-service's other endpoints, returns 404.
 - **Rate limiting:** `limit_req_zone $binary_remote_addr zone=lab:10m rate=10r/s` with `burst=20 nodelay`. Excess requests get 429.
@@ -333,7 +344,7 @@ https://acme-emr.lab-itb.example.org/tenants/token
 
 1. Create the organisation and system in the lab UI, and note the system API key.
 2. Set the system properties `hieClientId`, `hieClientSecret` and `labGatewayBaseUrl = https://<vendor>.<LAB_GATEWAY_DOMAIN>`.
-3. Add `<vendor>.<LAB_GATEWAY_DOMAIN> <API key>;` to `nginx/lab-vendors.map`. Optionally add the vendor's egress IP to the allowlist.
+3. Add `<vendor>.<LAB_GATEWAY_DOMAIN> <API key>;` to `nginx/lab/lab-vendors.map`. Optionally add the vendor's egress IP to the allowlist.
 4. Run `docker compose exec lab-gateway nginx -s reload`.
 5. Send the vendor the base URL and credentials out-of-band.
 
@@ -383,4 +394,16 @@ No test-case XML changes are needed.
 | Token request body format: form or JSON | Accept both; warn on JSON. Confirm with DHA. |
 | Identifier type spelling differs between guide and API enum | Enforce the API enum and report the expected value. Confirm with DHA. |
 | Undocumented 401 and 404 shapes | Mock uses the registry error shape; confirm against UAT (section 8). |
-| `receive` `result` blocks forwarding to upstream may hit handler timeouts | Set `handlerTimeout` and `connectionTimeout` explicitly; verified in end-to-end runs. |
+| `receive` `result` blocks forwarding to upstream may hit handler timeouts | `result timeout` 60 s and receive timeout 15 min set explicitly; verified in end-to-end runs. |
+| The query string may not be kept on `{request}{uri}` (undocumented) | lab-gateway adds `X-Lab-Original-Uri`; `normaliseRequest` falls back to it. |
+| An upstream failure shows only a generic step error in the UI | The cause is in the session log (`Forward to the HIE upstream … [Connect]`); the README points testers there. |
+
+## 11. Implementation decisions (2026-10-14)
+
+- **ITB layout:** a dedicated domain `Kenya HIE`, a specification `DHA HIE APIs`, and a community `Kenya HIE community` bound to that domain (the only existing domain was ITB's `Sample domain`). The community allows *Manage test sessions via REST API*, which the automation scripts need.
+- **Interaction prompts:** skipped through the `skipInteractions` input in automated runs (§6).
+- **Receive base URL:** domain parameter `labServiceBaseUrl` (§3.2).
+- **Checks after reply** and helper scriptlets (§4.1).
+- **Generated mock fixtures** from `fixtures.json` (§3.1).
+- **Gateway files** under `nginx/lab/`, shared `.inc` snippets, TLS template (§3.1, §7.2).
+- `AUTOMATION_ENABLED` in `docker-compose.yml` is unchanged: the running instance already serves `/api/rest`.
