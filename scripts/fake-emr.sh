@@ -193,6 +193,12 @@ act_token_json() {
     --data "$(jq -n --arg id "$LAB_CLIENT_ID" --arg s "$LAB_CLIENT_SECRET" '{client_id: $id, client_secret: $s}')"
 }
 act_token_bad_secret()  { form_token "wrong-secret"; }
+act_token_mixed_case_header() {
+  curl -s -o /dev/null -X POST "$EMR_BASE_URL/tenants/token" -H 'Content-type: application/x-www-form-urlencoded' \
+    --data-urlencode "client_id=$LAB_CLIENT_ID" --data-urlencode "client_secret=$LAB_CLIENT_SECRET"
+}
+act_cr01_mixed_case_headers() { lookup "$(fx .nationalId.type)" "$(fx .nationalId.number)" -H "AUTHORIZATION: Bearer $TOKEN" \
+    -H 'X-facility-id: FID-47-115307-8' -H 'X-facility-id-type: fr-code'; }
 act_cr01_ok()           { lookup "$(fx .nationalId.type)" "$(fx .nationalId.number)" -H "Authorization: Bearer $TOKEN"; }
 act_cr01_raw_query() { # '+' for spaces, number first, an extra parameter
   curl -s -o /dev/null "$EMR_BASE_URL/patients?identification_number=$(fx .nationalId.number)&foo=bar&identification_type=National+ID" \
@@ -224,6 +230,8 @@ mode_itb() {
   run_case "CR-01 with facility headers"         SUCCESS "" CR-01 act_cr01_facility_ok
   run_case "CR-02 other identifier types"        SUCCESS "" CR-02 act_cr02_ok
   run_case "CR-03 lower-case authorization header" SUCCESS "" CR-03 act_cr03_lowercase_auth
+  run_case "AUTH-01 mixed-case Content-type header" SUCCESS "" AUTH-01 act_token_mixed_case_header
+  run_case "CR-01 mixed-case AUTHORIZATION and X-facility-id" SUCCESS "" CR-01 act_cr01_mixed_case_headers
 }
 
 mode_itb_bad() {
