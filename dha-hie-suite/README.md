@@ -33,6 +33,10 @@ ITB then checks the call: credentials, Bearer JWT, facility headers, and the
    the client_id/secret you were issued.
 2. Have the EMR ready, start the test case, then do what the instruction says.
    Each step waits up to 15 minutes for the EMR's call.
+   Only AUTH-01 answers `POST /tenants/token`. If the EMR may fetch a new token
+   before a lookup (expired or per-call tokens), run AUTH-01 immediately before
+   CR-01, CR-02 or CR-03, otherwise the token call gets an empty 404 and the
+   lookup never arrives.
 3. Answer the confirmation prompt about what the EMR showed.
 
 Test identities are in `resources/fixtures.json`. They are synthetic only.
