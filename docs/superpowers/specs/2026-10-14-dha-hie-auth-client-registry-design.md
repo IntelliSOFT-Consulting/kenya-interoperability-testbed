@@ -115,16 +115,16 @@ The mock contains no conformance logic, so nothing is lost when UAT replaces it.
 |---|---|---|---|---|---|
 | `dhaClientId` | Simple | Yes | No | Yes | Expected `client_id` from this EMR |
 | `dhaClientSecret` | Secret | Yes | No | Yes | Expected `client_secret`; hidden in reports |
-| `dhaGatewayBaseUrl` | Simple | No | No | Yes | This vendor's clean base URL, e.g. `https://acme-emr.lab-itb.example.org` |
+| `labGatewayBaseUrl` | Simple | No | No | Yes | This vendor's clean base URL, e.g. `https://acme-emr.lab-itb.example.org` |
 
 - The admin issues the credentials for each vendor system and sends them to the vendor out-of-band. This mirrors DHA, which issues credentials per app.
 - Per-system credentials stop vendors sharing one secret and allow revoking a single vendor.
 
 **The URL shown to the tester.** Every test case's first `instruct` step shows the DHA base URL the EMR must use:
 
-| `dhaGatewayBaseUrl` | URL shown |
+| `labGatewayBaseUrl` | URL shown |
 |---|---|
-| Set | `$SYSTEM{dhaGatewayBaseUrl}` |
+| Set | `$SYSTEM{labGatewayBaseUrl}` |
 | Not set | The raw receive base, `<CALLBACK_ROOT_URL>/itbsrv/api/http/$SYSTEM{apiKey}` |
 
 ## 4. Test cases
@@ -287,7 +287,7 @@ https://acme-emr.lab-itb.example.org/tenants/token
 **Onboarding a vendor** (README checklist):
 
 1. Create the organisation and system in gitb-ui, and note the system API key.
-2. Set the system properties `dhaClientId`, `dhaClientSecret` and `dhaGatewayBaseUrl = https://<alias>.<LAB_GATEWAY_DOMAIN>`.
+2. Set the system properties `dhaClientId`, `dhaClientSecret` and `labGatewayBaseUrl = https://<alias>.<LAB_GATEWAY_DOMAIN>`.
 3. Add `<alias>.<LAB_GATEWAY_DOMAIN> <API key>;` to `nginx/lab-vendors.map`. Optionally add the vendor's egress IP to the allowlist.
 4. Run `docker compose exec lab-gateway nginx -s reload`.
 5. Send the vendor the base URL and credentials out-of-band.
