@@ -1,0 +1,6 @@
+# Optional IP allowlist for lab-gateway. With only comments, every client is
+# allowed. To restrict: one "allow <vendor egress IP>;" per line, then "deny all;".
+# Copied to nginx/lab/lab-allowlist.conf by scripts/init-lab-gateway.sh.
+#
+# allow 203.0.113.10;
+# deny all;

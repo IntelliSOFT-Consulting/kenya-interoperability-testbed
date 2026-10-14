@@ -1,0 +1,6 @@
+# Vendor host -> ITB system API key, one per line, lower-case host without port:
+#   <vendor>.<LAB_GATEWAY_DOMAIN> <system API key from the lab UI>;
+# Copied to nginx/lab/lab-vendors.map by scripts/init-lab-gateway.sh.
+# Reload after editing: docker compose exec lab-gateway nginx -s reload
+#
+# acme-emr.lab-itb.example.org 0123456789ABCDEF0123456789ABCDEF;

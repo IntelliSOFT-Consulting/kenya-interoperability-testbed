@@ -87,8 +87,34 @@ mode_mock() {
         --data-urlencode 'identification_type=National ID' --data-urlencode 'identification_number=90000001')"
 }
 
+mode_gateway() {
+  local unknown_body mapped_headers mapped_body raw_headers codes n429
+  unknown_body=$(curl -s "$GATEWAY_URL/tenants/token" || true)
+  check "gateway: unknown host -> 404" 404 "$(status_of "$GATEWAY_URL/tenants/token")"
+  check "gateway: unknown host body" '{"error":"Not Found","message":"Unknown vendor host"}' "$unknown_body"
+  check "gateway: automation API not exposed" 404 "$(status_of "$GATEWAY_URL/api/rest/tests/status")"
+
+  mapped_headers=$(curl -s -D - -o /dev/null "http://test-vendor.lab.localhost:9010/tenants/token" || true)
+  check "gateway: mapped vendor host reaches lab-service" yes \
+    "$(grep -qi '^X-Lab-Upstream: lab-service' <<<"$mapped_headers" && echo yes || echo no)"
+  mapped_body=$(curl -s "http://test-vendor.lab.localhost:9010/api/rest/tests/status" || true)
+  check "gateway: vendor host cannot reach the automation API" no \
+    "$(grep -q 'Needs API key header' <<<"$mapped_body" && echo yes || echo no)"
+
+  raw_headers=$(curl -s -D - -o /dev/null "$GATEWAY_URL/itbsrv/api/http/NO-SUCH-KEY/patients" || true)
+  check "gateway: raw receive path reaches lab-service" yes \
+    "$(grep -qi '^X-Lab-Upstream: lab-service' <<<"$raw_headers" && echo yes || echo no)"
+
+  # Parallel, so the burst exceeds 10 r/s + 20 regardless of how fast lab-service answers.
+  codes=$(seq 1 60 | xargs -P 30 -I{} curl -s -o /dev/null -w '%{http_code}\n' \
+    "http://test-vendor.lab.localhost:9010/rate-limit-probe" || true)
+  n429=$(grep -c '^429$' <<<"$codes" || true)
+  check "gateway: burst beyond rate limit gets 429" yes "$([ "$n429" -gt 0 ] && echo yes || echo no)"
+}
+
 case "${1:-}" in
   mock) mode_mock ;;
+  gateway) mode_gateway ;;
   *) echo "usage: $0 <mock|gateway|itb|itb-bad>" >&2; exit 2 ;;
 esac
 summary

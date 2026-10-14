@@ -144,3 +144,22 @@ services:
         - "8095:8080"
       volumes:
         - ./mock-hie:/home/wiremock
+
+   # ---------------------------
+   # LAB GATEWAY (EMR entry point)
+   # ---------------------------
+   # Run scripts/init-lab-gateway.sh once before the first start.
+   lab-gateway:
+      image: nginx:1.27-alpine
+      container_name: lab-gateway
+      restart: unless-stopped
+      ports:
+        - "9010:80"
+      volumes:
+        - ./nginx/lab-gateway.conf:/etc/nginx/conf.d/default.conf:ro
+        - ./nginx/lab-gateway-receive.inc:/etc/nginx/snippets/lab-gateway-receive.inc:ro
+        - ./nginx/lab-gateway-vendor.inc:/etc/nginx/snippets/lab-gateway-vendor.inc:ro
+        - ./nginx/lab:/etc/nginx/lab:ro
+      depends_on:
+        gitb-srv:
+          condition: service_started
