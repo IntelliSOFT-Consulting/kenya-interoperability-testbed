@@ -102,3 +102,18 @@ services:
         - spring.datasource.driverClassName=org.h2.Driver
         - spring.datasource.username=sa
         - spring.datasource.password=null
+
+   # ---------------------------
+   # MOCK HIE (DHA AfyaConnect middleware stand-in)
+   # ---------------------------
+   # Replaced by the local UAT services later by changing the ITB domain
+   # parameter hieBaseUrl; the test cases never reference this host directly.
+   mock-hie:
+      image: wiremock/wiremock:3.9.1
+      container_name: mock-hie
+      restart: unless-stopped
+      command: ["--disable-banner"]
+      ports:
+        - "8095:8080"
+      volumes:
+        - ./mock-hie:/home/wiremock

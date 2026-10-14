@@ -1,0 +1,28 @@
+{
+  "nationalId": {
+    "type": "National ID", "number": "90000001", "crId": "CR-MOCK-1000001",
+    "firstName": "Test", "lastName": "Mock-NationalID", "gender": "female",
+    "dateOfBirth": "1990-01-01", "displayName": "Test Mock-NationalID", "withDependants": true
+  },
+  "alternates": [
+    {"type": "ClientRegistry ID", "number": "CR-MOCK-1000002", "crId": "CR-MOCK-1000002",
+     "firstName": "Test", "lastName": "Mock-ClientRegistryID", "gender": "male",
+     "dateOfBirth": "1985-02-02", "displayName": "Test Mock-ClientRegistryID"},
+    {"type": "Birth Certificate", "number": "BC-MOCK-1000003", "crId": "CR-MOCK-1000003",
+     "firstName": "Test", "lastName": "Mock-BirthCertificate", "gender": "female",
+     "dateOfBirth": "2020-03-03", "displayName": "Test Mock-BirthCertificate"},
+    {"type": "Birth Notification", "number": "BN-MOCK-1000004", "crId": "CR-MOCK-1000004",
+     "firstName": "Test", "lastName": "Mock-BirthNotification", "gender": "male",
+     "dateOfBirth": "2025-04-04", "displayName": "Test Mock-BirthNotification"},
+    {"type": "Alien ID", "number": "AL-MOCK-1000005", "crId": "CR-MOCK-1000005",
+     "firstName": "Test", "lastName": "Mock-AlienID", "gender": "female",
+     "dateOfBirth": "1979-05-05", "displayName": "Test Mock-AlienID"},
+    {"type": "Refugee ID", "number": "RF-MOCK-1000006", "crId": "CR-MOCK-1000006",
+     "firstName": "Test", "lastName": "Mock-RefugeeID", "gender": "male",
+     "dateOfBirth": "1995-06-06", "displayName": "Test Mock-RefugeeID"},
+    {"type": "Mandate Number", "number": "MN-MOCK-1000007", "crId": "CR-MOCK-1000007",
+     "firstName": "Test", "lastName": "Mock-MandateNumber", "gender": "female",
+     "dateOfBirth": "1988-07-07", "displayName": "Test Mock-MandateNumber"}
+  ],
+  "notFound": {"type": "National ID", "number": "00000000"}
+}

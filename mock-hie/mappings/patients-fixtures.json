@@ -1,0 +1,165 @@
+{
+  "mappings": [
+    {
+      "name": "patients: fixture National ID 90000001",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPath": "/uat-middleware/api/v1/patients",
+        "queryParameters": {
+          "identification_type": {
+            "equalTo": "National ID"
+          },
+          "identification_number": {
+            "equalTo": "90000001"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "bodyFileName": "patients/national-id.json"
+      }
+    },
+    {
+      "name": "patients: fixture ClientRegistry ID CR-MOCK-1000002",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPath": "/uat-middleware/api/v1/patients",
+        "queryParameters": {
+          "identification_type": {
+            "equalTo": "ClientRegistry ID"
+          },
+          "identification_number": {
+            "equalTo": "CR-MOCK-1000002"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "bodyFileName": "patients/clientregistry-id.json"
+      }
+    },
+    {
+      "name": "patients: fixture Birth Certificate BC-MOCK-1000003",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPath": "/uat-middleware/api/v1/patients",
+        "queryParameters": {
+          "identification_type": {
+            "equalTo": "Birth Certificate"
+          },
+          "identification_number": {
+            "equalTo": "BC-MOCK-1000003"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "bodyFileName": "patients/birth-certificate.json"
+      }
+    },
+    {
+      "name": "patients: fixture Birth Notification BN-MOCK-1000004",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPath": "/uat-middleware/api/v1/patients",
+        "queryParameters": {
+          "identification_type": {
+            "equalTo": "Birth Notification"
+          },
+          "identification_number": {
+            "equalTo": "BN-MOCK-1000004"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "bodyFileName": "patients/birth-notification.json"
+      }
+    },
+    {
+      "name": "patients: fixture Alien ID AL-MOCK-1000005",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPath": "/uat-middleware/api/v1/patients",
+        "queryParameters": {
+          "identification_type": {
+            "equalTo": "Alien ID"
+          },
+          "identification_number": {
+            "equalTo": "AL-MOCK-1000005"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "bodyFileName": "patients/alien-id.json"
+      }
+    },
+    {
+      "name": "patients: fixture Refugee ID RF-MOCK-1000006",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPath": "/uat-middleware/api/v1/patients",
+        "queryParameters": {
+          "identification_type": {
+            "equalTo": "Refugee ID"
+          },
+          "identification_number": {
+            "equalTo": "RF-MOCK-1000006"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "bodyFileName": "patients/refugee-id.json"
+      }
+    },
+    {
+      "name": "patients: fixture Mandate Number MN-MOCK-1000007",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPath": "/uat-middleware/api/v1/patients",
+        "queryParameters": {
+          "identification_type": {
+            "equalTo": "Mandate Number"
+          },
+          "identification_number": {
+            "equalTo": "MN-MOCK-1000007"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "bodyFileName": "patients/mandate-number.json"
+      }
+    }
+  ]
+}
