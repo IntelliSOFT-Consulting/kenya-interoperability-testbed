@@ -63,9 +63,9 @@ UAT base URL: `https://ilm-dev.dha.go.ke/uat-middleware/api/v1`
 EMR (SUT) ──HTTP(S)──► lab-gateway (nginx) ──► gitb-srv  HttpMessagingV2 receive ──forward──► mock-hie (WireMock)
   (local or vendor-     maps a clean vendor        validates the request                    /uat-middleware/api/v1/...
    hosted)              base URL to                relays the upstream response to the EMR
-  DHA base URL =        /itbsrv/api/http/<apiKey>  reports results in gitb-ui
+  HIE base URL =        /itbsrv/api/http/<apiKey>  reports results in gitb-ui
   https://<alias>.<LAB_GATEWAY_DOMAIN>                   │
-  (or raw: <gateway>/itbsrv/api/http/<apiKey>)           └─ upstream = $DOMAIN{dhaBaseUrl}
+  (or raw: <gateway>/itbsrv/api/http/<apiKey>)           └─ upstream = $DOMAIN{hieBaseUrl}
                                                             now:   http://mock-hie:8080/uat-middleware/api/v1
                                                             later: local UAT base URL
 ```
@@ -107,7 +107,7 @@ The mock contains no conformance logic, so nothing is lost when UAT replaces it.
 
 | Parameter | Kind | Initial value | Used for |
 |---|---|---|---|
-| `dhaBaseUrl` | Simple | `http://mock-hie:8080/uat-middleware/api/v1` | Upstream for forwarding |
+| `hieBaseUrl` | Simple | `http://mock-hie:8080/uat-middleware/api/v1` | Upstream for forwarding |
 
 **System properties** (one set per EMR system, defined in the community's custom system properties):
 
@@ -120,7 +120,7 @@ The mock contains no conformance logic, so nothing is lost when UAT replaces it.
 - The admin issues the credentials for each vendor system and sends them to the vendor out-of-band. This mirrors DHA, which issues credentials per app.
 - Per-system credentials stop vendors sharing one secret and allow revoking a single vendor.
 
-**The URL shown to the tester.** Every test case's first `instruct` step shows the DHA base URL the EMR must use:
+**The URL shown to the tester.** Every test case's first `instruct` step shows the HIE base URL the EMR must use:
 
 | `labGatewayBaseUrl` | URL shown |
 |---|---|
@@ -137,7 +137,7 @@ Every case runs with `supportsParallelExecution="false"`, because the receive UR
   1. HttpMessagingV2 `receive` on `uriExtension`.
   2. Inside the `result` block:
      - run the given check scriptlet on `$r{request}`;
-     - `send` the request unchanged (method, headers including Authorization, query, body) to `$DOMAIN{dhaBaseUrl}` + path;
+     - `send` the request unchanged (method, headers including Authorization, query, body) to `$DOMAIN{hieBaseUrl}` + path;
      - return the upstream status, headers and body to the EMR.
   3. Outputs: the request, the upstream response, and check outcomes.
   4. Check failures do not block the reply, so the EMR always gets the upstream response and never hangs. The failures are reported on the step and fail the test.
@@ -311,7 +311,7 @@ This is documented only and is not for ongoing use.
 
 ## 8. Moving to local UAT (future, configuration only)
 
-1. Set `dhaBaseUrl` to the local UAT base URL. Set each system's `dhaClientId` and `dhaClientSecret` to the UAT-issued credentials.
+1. Set `hieBaseUrl` to the local UAT base URL. Set each system's `dhaClientId` and `dhaClientSecret` to the UAT-issued credentials.
 2. Replace the identities in `resources/fixtures.json` with UAT test identities, then repackage and upload the suite.
 3. Confirm the two assumed shapes (401 and 404) against UAT. Correct the mock if they differ.
 
