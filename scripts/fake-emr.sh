@@ -171,6 +171,16 @@ run_case() { # <label> <SUCCESS|FAILURE> <text the report must contain, or ''> <
   if [ -n "$3" ]; then
     check "$1: report mentions '$3'" yes "$(grep -qF "$3" "$STATUS_FILE" && echo yes || echo no)"
   fi
+  if [ "$4" = "AUTH-01" ]; then
+    # Spec 4.1: client_secret is never shown. The REST report is only an overview,
+    # so read the session's detailed step reports from the gitb-ui repository.
+    # They must mention client_id for the absence of the secret to mean anything.
+    local reports
+    reports=$(docker compose -f "$ROOT/docker-compose.yml" exec -T gitb-ui \
+      sh -c "cat \$(find /gitb-repository/status-updates -path '*$session*' -name '*.xml')" 2>/dev/null || true)
+    check "$1: step reports mention client_id" yes "$(grep -qF "$LAB_CLIENT_ID" <<<"$reports" && echo yes || echo no)"
+    check "$1: client_secret not in step reports" no "$(grep -qF "$LAB_CLIENT_SECRET" <<<"$reports" && echo yes || echo no)"
+  fi
 }
 
 form_token() { # <client_secret> [extra --data-urlencode args...]
