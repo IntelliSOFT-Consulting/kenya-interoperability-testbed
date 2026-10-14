@@ -18,6 +18,7 @@ The DHA services are provided by a **mock** for now. Later, a local UAT environm
 | Topic | Decision |
 |---|---|
 | System Under Test | The **EMR/facility client** that calls DHA APIs. ITB plays DHA. |
+| Externally hosted EMRs | Supported through a public **DHA gateway** (nginx) that maps a clean per-vendor base URL to ITB; credentials are set **per system** (section 7). |
 | How the EMR is triggered | **Tester-driven** first: ITB `interact` steps tell the tester what to do in the EMR. Automated triggering comes later and is out of scope here. The `fake-emr.sh` script is the seed for it. |
 | Architecture | **ITB as a validating gateway** in front of a separate upstream (mock now, UAT later). |
 | Mock technology | **WireMock** (declarative stubs and fixture files). |
@@ -58,17 +59,18 @@ UAT base URL: `https://ilm-dev.dha.go.ke/uat-middleware/api/v1`
 ## 3. Architecture
 
 ```
-                         docker network (compose)
-EMR (SUT) ──HTTP──► gitb-srv  HttpMessagingV2 receive ──forward──► mock-dha (WireMock)
-  DHA base URL =        validates the request                    /uat-middleware/api/v1/...
-  http://<itb-host>:8080/itbsrv/api/http/<systemApiKey>
-                        relays the upstream response to the EMR
-                        reports results in gitb-ui
-                              │
-                              └─ upstream = $DOMAIN{dhaBaseUrl}
-                                 now:   http://mock-dha:8080/uat-middleware/api/v1
-                                 later: local UAT base URL
+                                            docker network (compose)
+EMR (SUT) ──HTTP(S)──► dha-gateway (nginx) ──► gitb-srv  HttpMessagingV2 receive ──forward──► mock-dha (WireMock)
+  (local or vendor-     maps a clean vendor        validates the request                    /uat-middleware/api/v1/...
+   hosted)              base URL to                relays the upstream response to the EMR
+  DHA base URL =        /itbsrv/api/http/<apiKey>  reports results in gitb-ui
+  https://<alias>.<DHA_GATEWAY_DOMAIN>                   │
+  (or raw: <gateway>/itbsrv/api/http/<apiKey>)           └─ upstream = $DOMAIN{dhaBaseUrl}
+                                                            now:   http://mock-dha:8080/uat-middleware/api/v1
+                                                            later: local UAT base URL
 ```
+
+The EMR always initiates the calls; ITB never calls the EMR. An EMR anywhere, including one hosted by a vendor, therefore only needs outbound HTTPS to the gateway. The vendor's network needs no inbound access.
 
 **Division of responsibility**
 
@@ -88,20 +90,42 @@ The mock contains no conformance logic, so nothing is lost when UAT replaces it.
 | `dha-hie-suite/README.md` | Setup: domain parameters, pointing the EMR at ITB, Docker networking notes. |
 | `mock-dha/mappings/*.json` | WireMock stubs. |
 | `mock-dha/__files/**` | Fixture response bodies. |
-| `docker-compose.yml` | New `mock-dha` service: `wiremock/wiremock:3.9.1` image, mounts `mock-dha/`, internal URL `http://mock-dha:8080`, host port `8095`. |
+| `docker-compose.yml` | New `mock-dha` service: `wiremock/wiremock:3.9.1` image, mounts `mock-dha/`, internal URL `http://mock-dha:8080`, host port `8095`. New `dha-gateway` service: `nginx:1.27-alpine` image, host port `9010` (HTTP, local). |
+| `docker-compose.public.yml` | Override for internet-facing deployment (section 7): TLS on 443 for the gateway and gitb-ui, `CALLBACK_ROOT_URL` set to the public host, and `ports: !reset []` on `gitb-srv` and `mock-dha` so they are not published on the host. Requires Docker Compose ≥ 2.24. |
+| `nginx/dha-gateway.conf` | Gateway config: vendor host → API key mapping, the raw receive path, rate limiting, and 404 for everything else (section 7.2). |
+| `nginx/dha-gateway-tls.conf` | TLS server blocks, used only by the public override. |
+| `nginx/dha-vendors.map.example` | Committed example of the vendor host → API key map. The real `nginx/dha-vendors.map` is gitignored. |
+| `nginx/dha-allowlist.conf.example` | Optional IP allowlist example. The real `nginx/dha-allowlist.conf` is gitignored, and an empty file means allow all. |
+| `.gitignore` | Add `nginx/dha-vendors.map`, `nginx/dha-allowlist.conf`, `nginx/certs/`. |
 | `scripts/package-suite.sh` | Builds a clean suite zip (no top-level folder, no `__MACOSX`). Usable for the existing suites too. |
 | `scripts/fake-emr.sh` | Simulated EMR used for verification (section 6). |
 | `scripts/check-fixtures.sh` | Checks that every identity in `fixtures.json` resolves in the mock as expected. |
 
-### 3.2 Configuration (ITB domain parameters)
+### 3.2 Configuration
+
+**Domain parameters** (shared by all systems):
 
 | Parameter | Kind | Initial value | Used for |
 |---|---|---|---|
 | `dhaBaseUrl` | Simple | `http://mock-dha:8080/uat-middleware/api/v1` | Upstream for forwarding |
-| `dhaClientId` | Simple | `itb-test-client` | Expected `client_id` from the EMR; the tester configures it in the EMR |
-| `dhaClientSecret` | Secret | generated test value | Expected `client_secret`; hidden in reports |
 
-The URL the EMR must use as its DHA base URL is ITB's receive base, `<gitb-srv>/itbsrv/api/http/<system API key>`. Every test case shows this URL to the tester in its first `instruct` step.
+**System properties** (one set per EMR system, defined in the community's custom system properties):
+
+| Property | Kind | Required | Editable by vendor | In tests | Used for |
+|---|---|---|---|---|---|
+| `dhaClientId` | Simple | Yes | No | Yes | Expected `client_id` from this EMR |
+| `dhaClientSecret` | Secret | Yes | No | Yes | Expected `client_secret`; hidden in reports |
+| `dhaGatewayBaseUrl` | Simple | No | No | Yes | This vendor's clean base URL, e.g. `https://acme-emr.dha-itb.example.org` |
+
+- The admin issues the credentials for each vendor system and sends them to the vendor out-of-band. This mirrors DHA, which issues credentials per app.
+- Per-system credentials stop vendors sharing one secret and allow revoking a single vendor.
+
+**The URL shown to the tester.** Every test case's first `instruct` step shows the DHA base URL the EMR must use:
+
+| `dhaGatewayBaseUrl` | URL shown |
+|---|---|
+| Set | `$SYSTEM{dhaGatewayBaseUrl}` |
+| Not set | The raw receive base, `<CALLBACK_ROOT_URL>/itbsrv/api/http/$SYSTEM{apiKey}` |
 
 ## 4. Test cases
 
@@ -121,7 +145,7 @@ Every case runs with `supportsParallelExecution="false"`, because the receive UR
 
 - **`checkTokenRequest`**
   - The method is POST.
-  - `client_id` and `client_secret` are present and equal to `$DOMAIN{dhaClientId}` and `$DOMAIN{dhaClientSecret}`.
+  - `client_id` and `client_secret` are present and equal to `$SYSTEM{dhaClientId}` and `$SYSTEM{dhaClientSecret}`.
   - The content type is form-urlencoded. A JSON body with the right fields is a **warning**, not an error, because the docs contradict each other.
 
 - **`checkBearer`**
@@ -203,31 +227,115 @@ There is no real EMR in this repo, so verification uses `scripts/fake-emr.sh` (b
    - missing Bearer
    - only one `X-Facility-*` header
 4. **`check-fixtures.sh`** passes.
+5. **Gateway** (`fake-emr.sh gateway`) uses `curl --resolve test-vendor.dha.localhost:9010:127.0.0.1` against a test entry in `nginx/dha-vendors.map`. It checks four cases:
 
-If the automation API can't answer `interact` prompts in the deployed ITB version, steps 2–3 fall back to a manual run in gitb-ui following the README. The README documents this.
+   | Request | Expected result |
+   |---|---|
+   | The happy path of step 2, sent through the clean base URL | Every session ends in **SUCCESS** |
+   | An unknown host | 404 |
+   | `/itbsrv/api/rest/...` through the gateway | 404, because the automation API is not exposed |
+   | More than the rate limit | 429 |
 
-## 7. Moving to local UAT (future, configuration only)
+If the automation API can't answer `interact` prompts in the deployed ITB version, steps 2, 3 and 5 fall back to a manual run in gitb-ui following the README. The README documents this.
 
-1. Set `dhaBaseUrl` to the local UAT base URL. Set `dhaClientId` and `dhaClientSecret` to the UAT-issued credentials.
+## 7. Deployment for externally hosted (vendor) EMRs
+
+### 7.1 Exposure model
+
+The internet only ever reaches two things: the **DHA gateway** and the **gitb-ui** (for vendor testers). Both are served over TLS by `dha-gateway` in the public override.
+
+| Component | Local (`docker-compose.yml`) | Public (`+ docker-compose.public.yml`) |
+|---|---|---|
+| `dha-gateway` | HTTP on `:9010` | HTTPS on `:443` for `*.<DHA_GATEWAY_DOMAIN>` and `<ITB_UI_HOST>` |
+| `gitb-ui-proxy` | HTTP on `:9000` | Not published. Reached via `dha-gateway`, which serves `https://<ITB_UI_HOST>` and proxies to it, including WebSockets with a 3600s timeout. |
+| `gitb-srv` | `:8080` | Not published. Internal only: receive paths go through the gateway, and the automation API is not reachable from outside. |
+| `mock-dha` | `:8095` | Not published. Internal only. |
+| `CALLBACK_ROOT_URL` | `http://localhost:8080` | `https://<ITB_UI_HOST>` (or the gateway host), so the URLs ITB shows are reachable by vendors |
+
+- **TLS certificates:**
+  - A wildcard certificate for `*.<DHA_GATEWAY_DOMAIN>` and a certificate for `<ITB_UI_HOST>`, mounted from `nginx/certs/` (gitignored).
+  - Getting them is an operations prerequisite: a Let's Encrypt wildcard needs a DNS-01 challenge. Automating it is out of scope; the README documents the expected file names.
+- **DNS:** a wildcard record `*.<DHA_GATEWAY_DOMAIN>` pointing to the host.
+- **Hostnames:** `DHA_GATEWAY_DOMAIN` and `ITB_UI_HOST` are set in `.env`.
+
+### 7.2 Clean base URL mapping (`nginx/dha-gateway.conf`)
+
+**Goal:** each vendor EMR sees a bare host that looks like DHA's, with no path prefix and no API key in its configuration.
+
+```text
+https://acme-emr.dha-itb.example.org/tenants/token
+        └─ Host header ─┘            └─ path + query kept as-is ─┘
+   ──► http://gitb-srv:8080/itbsrv/api/http/<acme API key>/tenants/token
+```
+
+- **`map $host $vendor_api_key { default ""; include /etc/nginx/dha-vendors.map; }`**
+  - Each line in the map file is `<full hostname> <ITB system API key>;`. For example, `acme-emr.dha-itb.example.org 7F3A...;`
+  - Local testing uses `*.dha.localhost` names.
+- **Vendor server block** (`server_name *.<DHA_GATEWAY_DOMAIN> *.dha.localhost`):
+  - If `$vendor_api_key` is empty, it returns 404 `{"error":"Not Found","message":"Unknown vendor host"}`.
+  - Otherwise, `location / { proxy_pass http://gitb-srv:8080/itbsrv/api/http/$vendor_api_key$request_uri; }`.
+  - `Host`, `X-Forwarded-For` and `X-Forwarded-Proto` are set on the proxied request.
+- **Raw receive path:** the default server block on the gateway also accepts `/itbsrv/api/http/` and proxies it unchanged. This serves EMRs configured with the raw URL, and admins who have not added a map entry yet.
+- **Everything else is denied.** Any other path on the gateway, including `/itbsrv/api/rest/` (the automation API) and gitb-srv's other endpoints, returns 404.
+- **Rate limiting:** `limit_req_zone $binary_remote_addr zone=dha:10m rate=10r/s` with `burst=20 nodelay`. Excess requests get 429.
+- **Optional IP allowlist:** `include /etc/nginx/dha-allowlist.conf;` holding `allow <vendor egress IP>; ... deny all;`. An empty file means no restriction.
+- **Body and timeouts:**
+  - `client_max_body_size 5m`.
+  - `proxy_read_timeout 120s`, which covers ITB checking the request and forwarding it upstream.
+- **No secrets in logs:** the access log uses a format without the `Authorization` header and without request bodies.
+
+**Onboarding a vendor** (README checklist):
+
+1. Create the organisation and system in gitb-ui, and note the system API key.
+2. Set the system properties `dhaClientId`, `dhaClientSecret` and `dhaGatewayBaseUrl = https://<alias>.<DHA_GATEWAY_DOMAIN>`.
+3. Add `<alias>.<DHA_GATEWAY_DOMAIN> <API key>;` to `nginx/dha-vendors.map`. Optionally add the vendor's egress IP to the allowlist.
+4. Run `docker compose exec dha-gateway nginx -s reload`.
+5. Send the vendor the base URL and credentials out-of-band.
+
+**Revoking a vendor:** remove the map line and reload nginx. If the key has leaked, also regenerate the system API key in gitb-ui.
+
+### 7.3 Running a session with a vendor
+
+- The vendor tester logs into gitb-ui under their own organisation, starts the test case, and performs the EMR actions.
+- Alternatively, an admin runs the session while the vendor drives the EMR on a call.
+- `receive` steps wait for the EMR's call. The README tells testers to have the EMR ready before starting a case.
+- Fixtures are synthetic only. This is mandatory, because the endpoint is internet-facing.
+
+### 7.4 Fallback when ITB isn't publicly hosted yet
+
+For a one-off vendor session from a non-public machine, expose **only** `dha-gateway:9010` through a tunnel such as `cloudflared` or `ngrok`, and set `CALLBACK_ROOT_URL` accordingly.
+
+With a single tunnel hostname the vendor uses the raw receive path, because wildcard vendor hosts aren't available on most tunnels.
+
+This is documented only and is not for ongoing use.
+
+## 8. Moving to local UAT (future, configuration only)
+
+1. Set `dhaBaseUrl` to the local UAT base URL. Set each system's `dhaClientId` and `dhaClientSecret` to the UAT-issued credentials.
 2. Replace the identities in `resources/fixtures.json` with UAT test identities, then repackage and upload the suite.
 3. Confirm the two assumed shapes (401 and 404) against UAT. Correct the mock if they differ.
 
 No test-case XML changes are needed.
 
-## 8. Out of scope
+## 9. Out of scope
 
 - Health Worker and Facility registries, eClaims and preauths, consent, SHR and the Terminology service. Each is a later spec that reuses these scriptlets and the mock.
 - Automated EMR triggering and itb-broker integration.
+- Automated TLS certificate issuance and renewal.
 - Token expiry and refresh behaviour testing.
 - Fixing the `$.meta.profile` check in the existing suites.
 - CI pipelines.
 
-## 9. Risks & open questions
+## 10. Risks & open questions
 
 | Risk / question | Mitigation |
 |---|---|
-| The EMR may not accept a base URL with a path prefix (`/itbsrv/api/http/<key>`) | Document it in the README. If it's common, add a path-rewriting nginx route later. |
+| The EMR may not accept a base URL with a path prefix | Solved by the clean base URL mapping (section 7.2). The raw path is kept as an alternative. |
+| `proxy_pass` to a variable URL needs a `resolver` for `gitb-srv` | Use Docker's embedded DNS, `resolver 127.0.0.11 valid=30s`. Verified by the gateway test (section 6, step 5). |
+| ITB-generated report links and `CALLBACK_ROOT_URL` behind a TLS proxy | Set `CALLBACK_ROOT_URL` to the public host in the override. Verify that a vendor tester sees correct URLs in the UI. |
+| The internet-facing endpoint gets abused | Map-only routing, rate limit, optional IP allowlist, synthetic data only, and the automation API not exposed. |
+| The API key leaks through the raw path | Prefer clean hosts for vendors. Revoke by regenerating the system API key and updating the map. |
 | Token request body format: form or JSON | Accept both; warn on JSON. Confirm with DHA. |
 | Identifier type spelling differs between guide and API enum | Enforce the API enum and report the expected value. Confirm with DHA. |
-| Undocumented 401 and 404 shapes | Mock uses the registry error shape; confirm against UAT (section 7). |
+| Undocumented 401 and 404 shapes | Mock uses the registry error shape; confirm against UAT (section 8). |
 | `receive` `result` blocks forwarding to upstream may hit handler timeouts | Set `handlerTimeout` and `connectionTimeout` explicitly; verified in end-to-end runs. |
